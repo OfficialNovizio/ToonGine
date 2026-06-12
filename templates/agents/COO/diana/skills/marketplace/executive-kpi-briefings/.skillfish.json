@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "executive-kpi-briefings",
+  "owner": "gtmagents",
+  "repo": "gtm-agents",
+  "path": "plugins/business-intelligence/skills/executive-kpi-briefings",
+  "branch": "main",
+  "sha": "78e0419f4440bcb43bc80127e174ecf5adef1753",
+  "source": "manual"
+}

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "storytelling",
+  "owner": "gtmagents",
+  "repo": "gtm-agents",
+  "path": "plugins/content-marketing/skills/storytelling",
+  "branch": "main",
+  "sha": "78e0419f4440bcb43bc80127e174ecf5adef1753",
+  "source": "manual"
+}

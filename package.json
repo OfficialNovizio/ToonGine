@@ -11,7 +11,8 @@
     "./agents": "./dist/agents/index.js",
     "./algorithms": "./dist/algorithms/index.js",
     "./adapters": "./dist/adapters/index.js",
-    "./cli": "./cli/index.js"
+    "./cli": "./cli/yvon.js",
+    "./package.json": "./package.json"
   },
   "bin": {
     "yvon": "./cli/yvon.js"

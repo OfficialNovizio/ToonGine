@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "decision-critic",
+  "owner": "rjmurillo",
+  "repo": "ai-agents",
+  "path": ".claude/skills/decision-critic",
+  "branch": "main",
+  "sha": "c9e35bb7533688352be92b27741027345f64da54",
+  "source": "manual"
+}
