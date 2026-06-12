@@ -460,5 +460,18 @@ function countAgents(d) { if (!fs.existsSync(d)) return '0'; let c = 0; for (con
 
 // ─── Dispatch ──────────────────────────────────────────────────────────────
 
-const cmds = { init, doctor, graph, agents, version }
+const cmds = { init, doctor, graph, agents, dashboard, version }
 ;(cmds[command] || help)()
+
+function dashboard() {
+  console.log('\n  ⚡ Starting TOON Dashboard...\n')
+  try {
+    const { startDashboard } = require('../dist/dashboard/index.js')
+    startDashboard(4200)
+    console.log('  ✅ Dashboard running at http://localhost:4200')
+    console.log('  Press Ctrl+C to stop\n')
+  } catch (e) {
+    console.log('  ⚠️  Dashboard not available in this version')
+    console.log('  Try: npm install github:OfficialNovizio/YVON-Engine')
+  }
+}

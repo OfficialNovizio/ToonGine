@@ -13,7 +13,8 @@
     "./adapters": "./dist/adapters/index.js",
     "./cli": "./cli/yvon.js",
     "./package.json": "./package.json",
-    "./graphs": "./dist/graphs/index.js"
+    "./graphs": "./dist/graphs/index.js",
+    "./dashboard": "./dist/dashboard/index.js"
   },
   "bin": {
     "yvon": "./cli/yvon.js"
