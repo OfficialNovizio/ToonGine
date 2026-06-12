@@ -16,6 +16,8 @@ import { existsSync, readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { encodePrompt, ABBREV_MAP, abbreviateText } from './encoder'
 import { toon } from '../toon'
+import { createEngine } from '../v3/engine'
+import type { V3Engine } from '../v3/engine'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,10 +52,72 @@ const DICT_CACHE_TTL = 300000 // 5 minutes
 
 let _termMapCache: Record<string, string> | null = null
 
+let _v3Engine: V3Engine | null = null
+let _v3EngineLoaded = false
+
 // ─── Main Middleware ──────────────────────────────────────────────────────────
 
 export function autoToonMiddleware(options: ToonMiddlewareOptions): ToonContext {
   const root = options.projectRoot || process.cwd()
+  
+  // ─── V3 Engine (query-aware progressive loading) ──────────────────────────
+  if (!_v3EngineLoaded) {
+    const v3Path = join(root, '.toon', 'v3', 'engine.bin')
+    if (existsSync(v3Path)) {
+      try {
+        _v3Engine = createEngine(v3Path)
+        _v3Engine.load()
+        _v3EngineLoaded = true
+      } catch { /* v3 unavailable, fall back to v2 */ }
+    }
+    _v3EngineLoaded = true
+  }
+
+  // If v3 engine is available, use it for document/memory matching
+  if (_v3Engine) {
+    return middlewareV3(options, root)
+  }
+
+  // ─── V2 Fallback ────────────────────────────────────────────────────────
+  return middlewareV2(options, root)
+}
+
+// ─── V3 Middleware (query-aware engine) ──────────────────────────────────────
+
+function middlewareV3(options: ToonMiddlewareOptions, root: string): ToonContext {
+  const engine = _v3Engine!
+  const dict = loadDictionary(root)
+  
+  // Run v3 engine process
+  const result = engine.process({
+    systemPrompt: options.systemPrompt,
+    userMessage: options.userMessage,
+    agentId: options.agentId,
+    ventureId: options.ventureId,
+    sessionId: undefined, // TODO: wire session tracking
+  })
+  
+  return {
+    compressedUserMessage: result.compressedUserMessage || options.userMessage,
+    dictionary: dict,
+    relevantDocs: result.docContext || '',
+    relevantMemory: result.memoryContext || '',
+    outputInstruction: shouldUseToonOutput(options.userMessage)
+      ? '\n[TOON OUTPUT FORMAT: Respond using pipe-delimited fields. One record per line. No markdown, no prose. Fields: type|id|value1|value2|...]'
+      : '',
+    stats: {
+      originalLength: options.userMessage.length,
+      compressedLength: result.compressedUserMessage.length,
+      savingsPercent: Math.round((1 - result.compressedUserMessage.length / Math.max(1, options.userMessage.length)) * 100),
+      docsInjected: result.stats.docsInjected,
+      memoryEntries: result.stats.memoryEntries,
+    },
+  }
+}
+
+// ─── V2 Middleware (classic TOON) ────────────────────────────────────────────
+
+function middlewareV2(options: ToonMiddlewareOptions, root: string): ToonContext {
   const dict = loadDictionary(root)
   const termMap = loadTermMap(root)
 

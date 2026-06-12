@@ -11,6 +11,7 @@ import { join, dirname, relative } from 'path'
 import type { ProjectScan, InjectionPoint, ProjectDictionary, DiscoveredSchema } from './scanner'
 import { encodeDocument, encodeMemory, generateDictionaryString, ABBREV_MAP } from './encoder'
 import { strip } from '../v2/stripper'
+import { compile } from '../v3/compile'
 
 export interface InjectionResult {
   injected: string[]     // Files modified
@@ -23,6 +24,7 @@ export interface InjectionResult {
     documentsTooned: number
     memoriesTooned: number
     estimatedSavings: number
+    v3Compiled: boolean
   }
 }
 
@@ -40,6 +42,7 @@ export function injectToon(scan: ProjectScan): InjectionResult {
       documentsTooned: 0,
       memoriesTooned: 0,
       estimatedSavings: scan.estimatedTokenSavings,
+      v3Compiled: false,
     },
   }
 
@@ -63,7 +66,10 @@ export function injectToon(scan: ProjectScan): InjectionResult {
   // 6. TOON-compress agent memories
   compressMemories(scan, result)
 
-  // 7. Update project config
+  // 7. Compile v3 query-aware engine (after docs are TOON'd)
+  compileV3Engine(scan, result)
+
+  // 8. Update project config
   updateProjectConfig(scan, result)
 
   return result
@@ -256,19 +262,16 @@ function injectApiRoute(scan: ProjectScan, point: InjectionPoint, result: Inject
     return
   }
 
-  // SAFETY: Skip routes with dangerous patterns that injection would break
-  if (content.includes('if (error)') || content.includes('if (err)')) {
-    result.skipped.push(`${relative(scan.projectRoot, point.path)} (unsafe — error handling without braces)`)
-    return
-  }
+  // SAFETY: Only inject into routes where we can safely add TOON
+  // The route must have a Request parameter for request.headers access
+  const hasRequestParam = /GET\s*\(\s*request\s*(?::\s*Request)?\s*\)/.test(content) ||
+                          /POST\s*\(\s*request\s*(?::\s*Request)?\s*\)/.test(content)
+  const hasResponseJson = /return\s+(?:Response|NextResponse)\.json\(/.test(content)
 
-  // Add TOON response format support via Accept header
-  // Find: return Response.json( or return NextResponse.json(
-  const jsonRe = /(return\s+(?:Response|NextResponse)\.json\()/g
-  if (jsonRe.test(content)) {
-    // Add TOON import
-    const toonImport = `import { toon } from 'yvon-engine/toon'\n`
+  if (!hasRequestParam || !hasResponseJson) {
+    // Add TOON import only (non-invasive)
     if (!content.includes('yvon-engine/toon')) {
+      const toonImport = `import { toon } from 'yvon-engine/toon'\n`
       const firstImport = content.match(/^import\s+.+$/m)
       if (firstImport) {
         const pos = firstImport.index! + firstImport[0].length
@@ -276,29 +279,50 @@ function injectApiRoute(scan: ProjectScan, point: InjectionPoint, result: Inject
       } else {
         content = toonImport + content
       }
+      writeFileSync(point.path, content)
+      result.injected.push(`${relative(scan.projectRoot, point.path)} (TOON import added)`)
+      result.summary.injectionPointsHit++
+      return
     }
+    result.skipped.push(`${relative(scan.projectRoot, point.path)} (no Request param — import only)`)
+    return
+  }
 
-    // Add Accept header check for TOON format — only before braced return blocks
-    const acceptCheck = `
-  // TOON response format — auto-injected by yvon-engine
-  const acceptHeader = request.headers.get('accept') || ''
-  if (acceptHeader.includes('application/toon') || acceptHeader.includes('text/toon')) {
-    const toonResult = toon.api(data, '${point.path.split('/').pop()?.replace('route.', '') || 'generic'}')
-    return new Response(toonResult, { headers: { 'Content-Type': 'application/toon' } })
+  // Add TOON import if missing
+  if (!content.includes('yvon-engine/toon')) {
+    const toonImport = `import { toon } from 'yvon-engine/toon'\n`
+    const firstImport = content.match(/^import\s+.+$/m)
+    if (firstImport) {
+      const pos = firstImport.index! + firstImport[0].length
+      content = content.slice(0, pos) + '\n' + toonImport + content.slice(pos + 1)
+    } else {
+      content = toonImport + content
+    }
+  }
+
+  // Add safe TOON response check
+  const acceptCheck = `
+  // TOON response format — auto-injected by yvon-engine v1.4.0
+  try {
+    const acceptHeader = request.headers.get('accept') || ''
+    if (acceptHeader.includes('application/toon') || acceptHeader.includes('text/toon')) {
+      const items = [data as unknown as Record<string, unknown>]
+      const toonResult = toon.api ? toon.api(items, '${point.path.split('/').pop()?.replace('route.', '') || 'generic'}') : JSON.stringify(data)
+      return new Response(toonResult, { headers: { 'Content-Type': 'application/toon' } })
+    }
+  } catch {
+    // TOON not available — fall through to JSON
   }
 `
-    // Insert before the return Response.json
-    content = content.replace(
-      /(\s*)(return\s+(?:Response|NextResponse)\.json\()/,
-      acceptCheck + '\n$1$2'
-    )
+  // Insert before the return Response.json
+  content = content.replace(
+    /(\s*)(return\s+(?:Response|NextResponse)\.json\()/,
+    acceptCheck + '\n$1$2'
+  )
 
-    writeFileSync(point.path, content)
-    result.injected.push(relative(scan.projectRoot, point.path))
-    result.summary.injectionPointsHit++
-  } else {
-    result.skipped.push(`${relative(scan.projectRoot, point.path)} (no JSON responses found)`)
-  }
+  writeFileSync(point.path, content)
+  result.injected.push(relative(scan.projectRoot, point.path))
+  result.summary.injectionPointsHit++
 }
 
 // ─── Document Compression ─────────────────────────────────────────────────────
@@ -372,6 +396,24 @@ function compressMemoryToToon(content: string, path: string, _dict: ProjectDicti
     `#MEM id=${agentName} source=${path} savings=${result.savingsPercent}%`,
     ...result.records,
   ].join('\n')
+}
+
+// ─── V3 Engine Compiler ─────────────────────────────────────────────────
+
+function compileV3Engine(scan: ProjectScan, result: InjectionResult): void {
+  try {
+    const compileResult = compile({
+      projectRoot: scan.projectRoot,
+      outPath: join(scan.projectRoot, '.toon', 'v3', 'engine.bin'),
+      maxMergeIterations: 512,
+    })
+    result.created.push(`${relative(scan.projectRoot, compileResult.path)} (${compileResult.chunkCount} chunks, ${compileResult.indexSize} terms, ${compileResult.bpeTokens} BPE tokens)`)
+    result.summary.v3Compiled = true
+    console.log(`  🧠 V3 engine compiled: ${compileResult.chunkCount} chunks · ${compileResult.indexSize} terms · ${compileResult.bpeTokens} BPE tokens · ${(compileResult.corpusSize / 1024).toFixed(1)}KB corpus`)
+  } catch (e: any) {
+    result.errors.push(`v3 compile: ${e.message}`)
+    console.log(`  ⚠️  V3 engine skipped: ${e.message}`)
+  }
 }
 
 // ─── Config Updater ───────────────────────────────────────────────────────────

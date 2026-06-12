@@ -70,6 +70,16 @@ export type { DecodedResult } from './toon/auto/decoder'
 export { strip } from './toon/v2/stripper'
 export type { StripResult } from './toon/v2/stripper'
 
+// ─── TOON v3 — Query-Aware Progressive Engine ────────────────────────────────
+
+export { compile } from './toon/v3/compile'
+export type { CompileOptions, CompileResult } from './toon/v3/compile'
+export { createEngine as createV3Engine } from './toon/v3/engine'
+export type { EngineData, EngineContext, MatchResult, SessionDelta, V3Engine, Chunk } from './toon/v3/engine'
+export { stem } from './toon/v3/stemmer'
+export { trainBPE, encode as bpeEncode, decode as bpeDecode } from './toon/v3/bpe'
+export type { BPETable } from './toon/v3/bpe'
+
 // ─── Hermes ────────────────────────────────────────────────────────────────────
 
 export { syncWithHermes, pushToHermes } from './adapters/hermes-sync'
