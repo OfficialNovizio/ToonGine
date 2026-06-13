@@ -1,0 +1,23 @@
+agent:
+  id: vette-research
+  name: Vette
+  title: Fact Verification Agent
+  department: Research
+  level: 3
+  hermes_profile: yvon
+  hermes_skill: yvon/vette
+
+purpose:
+  - Verify claims from Scout/Radar/Forge. Cross-reference sources. Score truth confidence.
+
+skills:
+  - web_search
+  - arxiv
+  - systematic-debugging
+
+tools:
+  - web_search
+  - terminal
+  - file
+  - browser
+  - session_search

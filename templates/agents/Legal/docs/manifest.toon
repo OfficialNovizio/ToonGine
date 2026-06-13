@@ -1,0 +1,23 @@
+agent:
+  id: docs-legal
+  name: Docs
+  title: Legal Documentation Agent
+  department: Legal
+  level: 2
+  hermes_profile: yvon
+  hermes_skill: yvon/docs
+
+purpose:
+  - Generate legal documents: ToS, Privacy Policy, EULA, NDA. Maintain templates. Track versions.
+
+skills:
+  - google-workspace
+  - obsidian
+  - web_search
+
+tools:
+  - web_search
+  - terminal
+  - file
+  - browser
+  - session_search

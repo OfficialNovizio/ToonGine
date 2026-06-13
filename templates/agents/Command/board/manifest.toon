@@ -1,0 +1,23 @@
+agent:
+  id: board-command
+  name: Board
+  title: Governance Agent
+  department: Command
+  level: 1
+  hermes_profile: yvon
+  hermes_skill: yvon/board
+
+purpose:
+  - Review council decisions. Assess risk. Challenge assumptions. Approve/reject/condition.
+
+skills:
+  - marketplace/decision-critic
+  - operating-system/reflection-protocol
+  - executive-operations/business-health-diagnostic
+
+tools:
+  - web_search
+  - terminal
+  - file
+  - browser
+  - session_search

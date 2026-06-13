@@ -1,0 +1,24 @@
+agent:
+  id: depth-research
+  name: Depth
+  title: Deep Research Agent
+  department: Research
+  level: 3
+  hermes_profile: yvon
+  hermes_skill: yvon/depth
+
+purpose:
+  - Deep-dive research on specific topics. Competitor teardowns. Market maps. Tech analysis.
+
+skills:
+  - web_search
+  - browser
+  - youtube-content
+  - obsidian
+
+tools:
+  - web_search
+  - terminal
+  - file
+  - browser
+  - session_search
