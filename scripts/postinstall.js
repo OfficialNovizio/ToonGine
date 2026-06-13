@@ -10,6 +10,9 @@ const fs = require('fs')
 const path = require('path')
 const { execSync } = require('child_process')
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+const mkdir = (dir) => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }) }
+
 // ── Guard: only run when installed as a dependency ───────────────────────────
 const cwd = process.env.INIT_CWD || process.cwd()
 const ownPkg = path.join(__dirname, '..', 'package.json')
@@ -117,7 +120,7 @@ try {
 
   // Deploy agents (never overwrite existing user-modified agent files)
   const agentSrc = path.join(templateRoot, 'agents')
-  const agentDest = path.join(cwd, 'agent-department')
+  const agentDest = path.join(cwd, '.toon', 'memory', 'agent-department')
   if (fs.existsSync(agentSrc)) {
     const agentCount = copyDir(agentSrc, agentDest, false)
     const deptCount = fs.readdirSync(agentDest).filter(d => 

@@ -123,9 +123,17 @@ function toToonPath(relativePath, root) {
         if (relativePath.startsWith(prefix)) {
             const rel = relativePath.slice(prefix.length).replace(/^\//, '');
             const toonRel = rel.replace(/\.md$/, '.toon').replace(/\.json$/, '.json');
-            if (prefix === 'CLAUDE.md')
-                return (0, path_1.join)(root, mapping.toon);
-            return (0, path_1.join)(root, mapping.toon, toonRel);
+            const toonPath = (0, path_1.join)(root, mapping.toon, toonRel);
+            if ((0, fs_1.existsSync)(toonPath)) {
+                if (prefix === 'CLAUDE.md')
+                    return (0, path_1.join)(root, mapping.toon);
+                return toonPath;
+            }
+            const mdPath = (0, path_1.join)(root, mapping.toon, rel);
+            if ((0, fs_1.existsSync)(mdPath)) {
+                return mdPath;
+            }
+            return null;
         }
     }
     // Generic fallback: try .toon/memory/ or .toon/docs/

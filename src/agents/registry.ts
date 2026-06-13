@@ -16,7 +16,7 @@ export interface RegistryState {
 }
 
 export function loadRegistry(projectRoot: string): RegistryState {
-  const agentDir = path.join(projectRoot, 'agent-department')
+  const agentDir = path.join(projectRoot, '.toon', 'memory', 'agent-department');
   const agents: AgentManifest[] = []
   const validations: ManifestValidation[] = []
 

@@ -434,14 +434,16 @@ export function compileFile(sourcePath: string, projectRoot: string, dict?: Reco
 
     // Determine destination path
     let destPath: string
-    if (sourcePath.startsWith('agent-department/') || sourcePath.startsWith('agent-memory/')) {
-      destPath = `.toon/memory/${sourcePath.replace(/\.md$/, '.toon')}`
-    } else if (sourcePath.startsWith('docs/')) {
-      destPath = `.toon/docs/${sourcePath.replace(/^docs\//, '').replace(/\.md$/, '.toon')}`
-    } else if (sourcePath === 'CLAUDE.md') {
+    // Strip any leading .toon/ to prevent double-nesting
+    const cleanSource = sourcePath.replace(/^\.toon\//, '')
+    if (cleanSource.startsWith('agent-department/') || cleanSource.startsWith('agent-memory/')) {
+      destPath = `.toon/memory/${cleanSource.replace(/\.md$/, '.toon')}`
+    } else if (cleanSource.startsWith('docs/')) {
+      destPath = `.toon/docs/${cleanSource.replace(/^docs\//, '').replace(/\.md$/, '.toon')}`
+    } else if (cleanSource === 'CLAUDE.md') {
       destPath = '.toon/project/CLAUDE.md'
     } else {
-      destPath = `.toon/${sourcePath.replace(/\.md$/, '.toon')}`
+      destPath = `.toon/${cleanSource.replace(/\.md$/, '.toon')}`
     }
 
     const fullDestPath = path.resolve(projectRoot, destPath)
@@ -495,8 +497,9 @@ export function compileAll(projectRoot: string, dict?: Record<string, string>): 
   const start = Date.now()
   const results: CompileResult[] = []
 
-  // Find all .md files in agent-department/
-  const agentDept = path.join(projectRoot, 'agent-department')
+  // Find all .md files in agent-department/ (under .toon/memory/)
+  const agentDept = path.join(projectRoot, '.toon', 'memory', 'agent-department')
+  const agentMem  = path.join(projectRoot, '.toon', 'memory', 'agent-memory')
   const docsDir = path.join(projectRoot, 'docs')
   const claudeMd = path.join(projectRoot, 'CLAUDE.md')
 
@@ -504,7 +507,7 @@ export function compileAll(projectRoot: string, dict?: Record<string, string>): 
     if (!fs.existsSync(dir)) return []
     const files: string[] = []
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.next' || entry.name === '.toon')
+      if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.next')
         continue
       const full = path.join(dir, entry.name)
       if (entry.isDirectory()) {
@@ -519,6 +522,7 @@ export function compileAll(projectRoot: string, dict?: Record<string, string>): 
   // Collect all .md files
   const allFiles: string[] = []
   if (fs.existsSync(agentDept)) allFiles.push(...findMdFiles(agentDept))
+  if (fs.existsSync(agentMem)) allFiles.push(...findMdFiles(agentMem))
   if (fs.existsSync(docsDir)) allFiles.push(...findMdFiles(docsDir))
   if (fs.existsSync(claudeMd)) allFiles.push('CLAUDE.md')
 

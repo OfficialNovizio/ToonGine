@@ -401,17 +401,19 @@ function compileFile(sourcePath, projectRoot, dict) {
         const indexEntries = extractIndexTerms(abbreviated, sourcePath);
         // Determine destination path
         let destPath;
-        if (sourcePath.startsWith('agent-department/') || sourcePath.startsWith('agent-memory/')) {
-            destPath = `.toon/memory/${sourcePath.replace(/\.md$/, '.toon')}`;
+        // Strip any leading .toon/ to prevent double-nesting
+        const cleanSource = sourcePath.replace(/^\.toon\//, '');
+        if (cleanSource.startsWith('agent-department/') || cleanSource.startsWith('agent-memory/')) {
+            destPath = `.toon/memory/${cleanSource.replace(/\.md$/, '.toon')}`;
         }
-        else if (sourcePath.startsWith('docs/')) {
-            destPath = `.toon/docs/${sourcePath.replace(/^docs\//, '').replace(/\.md$/, '.toon')}`;
+        else if (cleanSource.startsWith('docs/')) {
+            destPath = `.toon/docs/${cleanSource.replace(/^docs\//, '').replace(/\.md$/, '.toon')}`;
         }
-        else if (sourcePath === 'CLAUDE.md') {
+        else if (cleanSource === 'CLAUDE.md') {
             destPath = '.toon/project/CLAUDE.md';
         }
         else {
-            destPath = `.toon/${sourcePath.replace(/\.md$/, '.toon')}`;
+            destPath = `.toon/${cleanSource.replace(/\.md$/, '.toon')}`;
         }
         const fullDestPath = path.resolve(projectRoot, destPath);
         const dir = path.dirname(fullDestPath);
@@ -459,8 +461,9 @@ function compileFile(sourcePath, projectRoot, dict) {
 function compileAll(projectRoot, dict) {
     const start = Date.now();
     const results = [];
-    // Find all .md files in agent-department/
-    const agentDept = path.join(projectRoot, 'agent-department');
+    // Find all .md files in agent-department/ (under .toon/memory/)
+    const agentDept = path.join(projectRoot, '.toon', 'memory', 'agent-department');
+    const agentMem = path.join(projectRoot, '.toon', 'memory', 'agent-memory');
     const docsDir = path.join(projectRoot, 'docs');
     const claudeMd = path.join(projectRoot, 'CLAUDE.md');
     function findMdFiles(dir) {
@@ -468,7 +471,7 @@ function compileAll(projectRoot, dict) {
             return [];
         const files = [];
         for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-            if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.next' || entry.name === '.toon')
+            if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.next')
                 continue;
             const full = path.join(dir, entry.name);
             if (entry.isDirectory()) {
@@ -484,6 +487,8 @@ function compileAll(projectRoot, dict) {
     const allFiles = [];
     if (fs.existsSync(agentDept))
         allFiles.push(...findMdFiles(agentDept));
+    if (fs.existsSync(agentMem))
+        allFiles.push(...findMdFiles(agentMem));
     if (fs.existsSync(docsDir))
         allFiles.push(...findMdFiles(docsDir));
     if (fs.existsSync(claudeMd))
