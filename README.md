@@ -1,10 +1,10 @@
-# YVON Engine
+# ToonGine
 
 **AI Agent OS Kernel — One npm install. Full agent team.**
 
 ```bash
-npm install @yvon/engine
-npx yvon init
+npm install toongine
+npx toongine init
 ```
 
 ## What You Get
@@ -23,19 +23,19 @@ npx yvon init
 
 ```bash
 # Install
-npm install @yvon/engine
+npm install toongine
 
 # Initialize (auto-detects existing features)
-npx yvon init
+npx toongine init
 
 # Health check
-npx yvon doctor
+npx toongine doctor
 
 # Wire into your API route
 ```
 
 ```typescript
-import { buildCieContext } from '@yvon/engine'
+import { buildCieContext } from 'toongine'
 
 // In your Claude/DeepSeek API route:
 const cie = buildCieContext({
@@ -52,7 +52,7 @@ const cie = buildCieContext({
 
 ```
 ┌─────────────────────────────────────┐
-│         YVON ENGINE                  │
+│         TOONGINE                  │
 │                                      │
 │  CIE (classify → retrieve → rank)    │
 │       ↓                              │
@@ -102,12 +102,12 @@ Pluggable adapters:
 ## CLI Commands
 
 ```bash
-yvon init          # Initialize engine
-yvon doctor        # Health check
-yvon graph         # Rebuild knowledge graphs
-yvon agents        # Agent status
-yvon compress      # Compression stats
-yvon dashboard     # TOON visual dashboard
+toongine init          # Initialize engine
+toongine doctor        # Health check
+toongine graph         # Rebuild knowledge graphs
+toongine agents        # Agent status
+toongine compress      # Compression stats
+toongine dashboard     # TOON visual dashboard
 ```
 
 ## License

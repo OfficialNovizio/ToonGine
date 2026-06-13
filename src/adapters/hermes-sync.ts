@@ -1,7 +1,7 @@
 // src/adapters/hermes-sync.ts — Hermes memory sync module
 //
 // Reads/writes ~/.hermes/memories/ files for bidirectional
-// context synchronization between YVON Engine and Hermes Agent.
+// context synchronization between ToonGine and Hermes Agent.
 //
 //   syncWithHermes()     → read USER.md + MEMORY.md, return synced context
 //   pushToHermes(...)    → write memories back to Hermes
@@ -169,7 +169,7 @@ export function pushToHermes(memories: string[]): HermesPushResult {
   try {
     const existing = existsSync(memoryFile)
       ? readFileSync(memoryFile, 'utf-8')
-      : '# Hermes Agent Memory\n\nPersistent memories synced from YVON Engine.\n'
+      : '# Hermes Agent Memory\n\nPersistent memories synced from ToonGine.\n'
 
     writeFileSync(memoryFile, existing + block, 'utf-8')
   } catch (err: unknown) {

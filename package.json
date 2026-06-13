@@ -1,7 +1,7 @@
 {
-  "name": "yvon-engine",
+  "name": "toongine",
   "version": "1.5.4",
-  "description": "YVON Engine — AI Agent OS kernel. 13 agents, Context Intelligence Engine, TOON compression, knowledge graphs, Hermes sync. One npm install, full agent team.",
+  "description": "ToonGine — TOON compression engine for AI agents. Context Intelligence Engine, knowledge graphs, Hermes sync. One install, full agent context pipeline.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -23,13 +23,13 @@
     "./agents": "./dist/agents/index.js",
     "./algorithms": "./dist/algorithms/index.js",
     "./adapters": "./dist/adapters/index.js",
-    "./cli": "./cli/yvon.js",
+    "./cli": "./cli/toongine.js",
     "./package.json": "./package.json",
     "./graphs": "./dist/graphs/index.js",
     "./dashboard": "./dist/dashboard/index.js"
   },
   "bin": {
-    "yvon": "./cli/yvon.js"
+    "toongine": "./cli/toongine.js"
   },
   "files": [
     "dist/",
@@ -62,7 +62,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/OfficialNovizio/YVON-Engine"
+    "url": "https://github.com/OfficialNovizio/ToonGine"
   },
   "author": "YVON OS",
   "license": "MIT",

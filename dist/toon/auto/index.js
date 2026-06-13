@@ -4,7 +4,7 @@
 // One import. Full project TOON-ification.
 //
 // Usage:
-//   import { scanProject, injectToon, toonifyAll } from 'yvon-engine/toon/auto'
+//   import { scanProject, injectToon, toonifyAll } from 'toongine/toon/auto'
 //   const result = toonifyAll('/path/to/project')
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.toonifyHermes = exports.compressHermesSkill = exports.computeHermesSessionDelta = exports.compressHermesMemory = exports.expandWithDictionary = exports.parseDictionaryBlock = exports.decodeToonResponse = exports.ABBREV_MAP = exports.generateDictionaryString = exports.encodePrompt = exports.encodeMemory = exports.encodeDocument = exports.autoToonMiddleware = exports.injectToon = exports.scanProject = void 0;
@@ -102,7 +102,7 @@ function toonifyAll(projectRoot) {
         `     • Hermes skills: TOON-compressed for prompt injection`,
         ``,
         `  Run: npm run build   (verify nothing broke)`,
-        `  Run: npx yvon doctor  (health check)`,
+        `  Run: npx toongine doctor  (health check)`,
         ``,
     ].filter(Boolean).join('\n');
     console.log(summary);

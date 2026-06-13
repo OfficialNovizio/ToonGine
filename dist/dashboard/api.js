@@ -116,9 +116,9 @@ router.get('/cost', (req, res) => {
     const hours = parseInt(req.query.hours) || 24;
     res.json(collector_1.metrics.getHistoricalCostSummary(hours));
 });
-// ── Config (yvon.config.json) ───────────────────────────────────────────────
+// ── Config (toongine.config.json) ───────────────────────────────────────────────
 router.get('/config', (_req, res) => {
-    const configPath = (0, path_1.join)(process.cwd(), 'yvon.config.json');
+    const configPath = (0, path_1.join)(process.cwd(), 'toongine.config.json');
     if ((0, fs_1.existsSync)(configPath)) {
         res.json(JSON.parse((0, fs_1.readFileSync)(configPath, 'utf-8')));
     }

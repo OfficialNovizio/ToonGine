@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# yvon-clean — Remove stale duplicates, rebuild engine.bin index
-# Usage: bash tools/yvon-clean
+# toongine-clean — Remove stale duplicates, rebuild engine.bin index
+# Usage: bash tools/toongine-clean
 
 set -euo pipefail
 ROOT="${1:-.}"
@@ -45,14 +45,14 @@ echo ""
 echo "  🧠 Rebuilding v3 engine.bin..."
 node -e "
   try {
-    const {compile} = require('$ROOT/node_modules/yvon-engine/dist/toon/v3/compile');
+    const {compile} = require('$ROOT/node_modules/toongine/dist/toon/v3/compile');
     const result = compile({projectRoot:'$ROOT',maxMergeIterations:512});
     console.log('  ✅ engine.bin: '+result.chunkCount+' chunks · '+result.indexSize+' terms · '+result.bpeTokens+' BPE tokens');
   } catch(e) {
     console.log('  ⚠️  Compile failed: '+e.message);
-    console.log('  Run: npm install yvon-engine first');
+    console.log('  Run: npm install toongine first');
   }
-" 2>/dev/null || echo "  ⚠️  engine not installed — run: npm install yvon-engine"
+" 2>/dev/null || echo "  ⚠️  engine not installed — run: npm install toongine"
 
 echo ""
 echo -e "  ${GREEN}✅ Clean complete${NC}"

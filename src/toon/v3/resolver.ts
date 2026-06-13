@@ -8,7 +8,7 @@
 //   resolve(path) → .toon/ (compressed) → .archive/ (original) → raw path
 //
 // Usage:
-//   import { resolve } from 'yvon-engine/toon/v3/resolver'
+//   import { resolve } from 'toongine/toon/v3/resolver'
 //   const memory = resolve('agent-department/CEO/marcus/MEMORY.md')
 //   const docs   = resolve('docs/novizio/CONTEXT.md', 'llm')
 //   const docs   = resolve('docs/novizio/CONTEXT.md', 'human')

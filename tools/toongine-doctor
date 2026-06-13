@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# yvon-doctor — Full health check for YVON Engine + project
-# Usage: bash tools/yvon-doctor [--fix]
+# toongine-doctor — Full health check for ToonGine + project
+# Usage: bash tools/toongine-doctor [--fix]
 
 set -euo pipefail
 ROOT="${1:-.}"
@@ -12,17 +12,17 @@ err() { echo -e "  ${RED}❌${NC} $1: $2"; ((fail++)); }
 wrn() { echo -e "  ${YELLOW}⚠️${NC} $1: $2"; ((warn++)); }
 
 echo ""
-echo "  🏥 YVON Engine — Health Check"
+echo "  🏥 ToonGine — Health Check"
 echo "  $(date '+%Y-%m-%d %H:%M')"
 echo ""
 
 # ── Engine package ──────────────────────────────────────────────────────
-ENGINE_PKG="$ROOT/node_modules/yvon-engine/package.json"
+ENGINE_PKG="$ROOT/node_modules/toongine/package.json"
 if [ -f "$ENGINE_PKG" ]; then
   VER=$(node -e "console.log(require('$ENGINE_PKG').version)" 2>/dev/null || echo "?")
-  ok "yvon-engine" "v$VER"
+  ok "toongine" "v$VER"
 else
-  err "yvon-engine" "not installed — run: npm install yvon-engine"
+  err "toongine" "not installed — run: npm install toongine"
 fi
 
 # ── .toon/ structure ────────────────────────────────────────────────────
@@ -32,7 +32,7 @@ if [ -d "$TOON_DIR" ]; then
   MEMS=$(find "$TOON_DIR/memory" -type f 2>/dev/null | wc -l)
   ok ".toon/"     "docs:$DOCS memory:$MEMS"
 else
-  wrn ".toon/"    "not found — run: npx yvon integrate"
+  wrn ".toon/"    "not found — run: npx toongine integrate"
 fi
 
 # ── V3 engine.bin ───────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ if [ -f "$ENGINE_BIN" ]; then
   CHUNKS=$(node -e "try{const d=JSON.parse(require('fs').readFileSync('$ENGINE_BIN','utf-8'));console.log(d.chunkCount)}catch(e){console.log('?')}" 2>/dev/null)
   ok  "engine.bin" "$SIZE, $CHUNKS chunks"
 else
-  wrn "engine.bin" "not compiled — run: npx yvon integrate"
+  wrn "engine.bin" "not compiled — run: npx toongine integrate"
 fi
 
 # ── Schemas ─────────────────────────────────────────────────────────────
@@ -76,16 +76,16 @@ fi
 if [ -d "$ROOT/graphify-out" ] || [ -d "$TOON_DIR/graphs" ]; then
   ok  "graphs"     "available"
 else
-  wrn "graphs"     "not built — run: npx yvon graph"
+  wrn "graphs"     "not built — run: npx toongine graph"
 fi
 
 # ── CIE wiring ──────────────────────────────────────────────────────────
 CLAUDE_RT="$ROOT/app/api/claude/route.ts"
 if [ -f "$CLAUDE_RT" ]; then
-  if grep -q "yvon-engine" "$CLAUDE_RT" 2>/dev/null; then
+  if grep -q "toongine" "$CLAUDE_RT" 2>/dev/null; then
     ok "CIE/TOON"  "wired in Claude route"
   else
-    wrn "CIE/TOON" "not wired — run: npx yvon integrate"
+    wrn "CIE/TOON" "not wired — run: npx toongine integrate"
   fi
 fi
 
@@ -105,11 +105,11 @@ echo -e "  ${GREEN}Pass: $pass${NC}  ${RED}Fail: $fail${NC}  ${YELLOW}Warn: $war
 echo ""
 
 if [ "$fail" -gt 0 ]; then
-  echo "  Run: npx yvon integrate   (fix wiring)"
-  echo "  Run: npx yvon doctor      (interactive)"
+  echo "  Run: npx toongine integrate   (fix wiring)"
+  echo "  Run: npx toongine doctor      (interactive)"
   exit 1
 elif [ "$warn" -gt 0 ]; then
-  echo "  Run: npx yvon integrate   (one-click fix)"
+  echo "  Run: npx toongine integrate   (one-click fix)"
   exit 0
 else
   echo "  ✅ All systems operational"

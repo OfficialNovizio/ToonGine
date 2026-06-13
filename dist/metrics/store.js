@@ -29,7 +29,7 @@ function getDb() {
         const path = require('path');
         const fs = require('fs');
         const homeDir = process.env.HOME || process.env.USERPROFILE || '/root';
-        const dbDir = path.join(homeDir, '.yvon-metrics');
+        const dbDir = path.join(homeDir, '.toongine-metrics');
         if (!fs.existsSync(dbDir))
             fs.mkdirSync(dbDir, { recursive: true });
         const dbPath = path.join(dbDir, 'metrics.db');

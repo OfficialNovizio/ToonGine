@@ -155,10 +155,10 @@ router.get('/cost', (req: Request, res: Response) => {
   res.json(metrics.getHistoricalCostSummary(hours))
 })
 
-// ── Config (yvon.config.json) ───────────────────────────────────────────────
+// ── Config (toongine.config.json) ───────────────────────────────────────────────
 
 router.get('/config', (_req: Request, res: Response) => {
-  const configPath = join(process.cwd(), 'yvon.config.json')
+  const configPath = join(process.cwd(), 'toongine.config.json')
   if (existsSync(configPath)) {
     res.json(JSON.parse(readFileSync(configPath, 'utf-8')))
   } else {

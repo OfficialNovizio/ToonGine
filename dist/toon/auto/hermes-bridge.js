@@ -1,7 +1,7 @@
 "use strict";
 // src/toon/auto/hermes-bridge.ts — Hermes Agent TOON Integration
 //
-// Hermes-specific TOON compression layer. When yvon-engine is used alongside
+// Hermes-specific TOON compression layer. When toongine is used alongside
 // Hermes Agent, this module compresses Hermes-native data formats into TOON:
 //
 // 1. Hermes MEMORY.md → TOON-structured memory entries
@@ -241,7 +241,7 @@ function compressText(text) {
 }
 /**
  * Run full TOON-ification on all Hermes data for a project.
- * Called automatically during `yvon integrate` if Hermes is detected.
+ * Called automatically during `toongine integrate` if Hermes is detected.
  */
 function toonifyHermes(projectRoot, hermesHome) {
     const home = hermesHome || (0, path_1.join)(process.env.HOME || '/root', '.hermes');

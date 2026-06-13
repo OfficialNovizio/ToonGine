@@ -3,7 +3,7 @@
 // One import. Full project TOON-ification.
 //
 // Usage:
-//   import { scanProject, injectToon, toonifyAll } from 'yvon-engine/toon/auto'
+//   import { scanProject, injectToon, toonifyAll } from 'toongine/toon/auto'
 //   const result = toonifyAll('/path/to/project')
 
 export { scanProject } from './scanner'
@@ -117,7 +117,7 @@ export function toonifyAll(projectRoot: string): ToonifyResult {
     `     • Hermes skills: TOON-compressed for prompt injection`,
     ``,
     `  Run: npm run build   (verify nothing broke)`,
-    `  Run: npx yvon doctor  (health check)`,
+    `  Run: npx toongine doctor  (health check)`,
     ``,
   ].filter(Boolean).join('\n')
 

@@ -136,12 +136,12 @@ function injectClaudeRoute(scan, point, result) {
     let content = (0, fs_1.readFileSync)(point.path, 'utf-8');
     let modified = false;
     // Check if already injected
-    if (content.includes('yvon-engine/toon/auto') || content.includes('autoToonMiddleware')) {
+    if (content.includes('toongine/toon/auto') || content.includes('autoToonMiddleware')) {
         result.skipped.push(`${(0, path_1.relative)(scan.projectRoot, point.path)} (already TOON-injected)`);
         return;
     }
     // 1. Add TOON auto import after existing imports
-    const importInsert = `import { autoToonMiddleware } from 'yvon-engine/toon/auto/middleware'\n`;
+    const importInsert = `import { autoToonMiddleware } from 'toongine/toon/auto/middleware'\n`;
     const lastImportRe = /(import\s+.+from\s+['"].+['"]\s*\n)(?!\s*import)/g;
     const matches = [...content.matchAll(lastImportRe)];
     if (matches.length > 0) {
@@ -206,8 +206,8 @@ function injectApiRoute(scan, point, result) {
     const hasResponseJson = /return\s+(?:Response|NextResponse)\.json\(/.test(content);
     if (!hasRequestParam || !hasResponseJson) {
         // Add TOON import only (non-invasive)
-        if (!content.includes('yvon-engine/toon')) {
-            const toonImport = `import { toon } from 'yvon-engine/toon'\n`;
+        if (!content.includes('toongine/toon')) {
+            const toonImport = `import { toon } from 'toongine/toon'\n`;
             const firstImport = content.match(/^import\s+.+$/m);
             if (firstImport) {
                 const pos = firstImport.index + firstImport[0].length;
@@ -227,8 +227,8 @@ function injectApiRoute(scan, point, result) {
     // SAFETY: Only inject TOON import — response injection is too fragile
     // The import enables manual `toon.api()` calls; auto-injection of response
     // formatting often breaks because `data` and `request` scope varies per route.
-    if (!content.includes('yvon-engine/toon')) {
-        const toonImport = `import { toon } from 'yvon-engine/toon'\n`;
+    if (!content.includes('toongine/toon')) {
+        const toonImport = `import { toon } from 'toongine/toon'\n`;
         const firstImport = content.match(/^import\s+.+$/m);
         if (firstImport) {
             const pos = firstImport.index + firstImport[0].length;
@@ -322,7 +322,7 @@ function compileV3Engine(scan, result) {
 }
 // ─── Config Updater ───────────────────────────────────────────────────────────
 function updateProjectConfig(scan, result) {
-    const configPath = (0, path_1.join)(scan.projectRoot, 'yvon.config.json');
+    const configPath = (0, path_1.join)(scan.projectRoot, 'toongine.config.json');
     let config = {};
     if ((0, fs_1.existsSync)(configPath)) {
         try {

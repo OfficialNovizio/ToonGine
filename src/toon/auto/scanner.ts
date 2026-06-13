@@ -6,7 +6,7 @@
 // 3. Build project-specific dictionary (venture names, agent IDs, statuses, terms)
 // 4. Map injection points (where TOON should be wired)
 //
-// This is the "brain" — runs once during `yvon integrate`, then the generated
+// This is the "brain" — runs once during `toongine integrate`, then the generated
 // config drives all subsequent TOON compression automatically.
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
@@ -309,7 +309,7 @@ function buildDictionary(root: string, schemas: DiscoveredSchema[]): ProjectDict
   const dict = buildEmptyDictionary()
 
   // Auto-detect ventures from config
-  const configPath = join(root, 'yvon.config.json')
+  const configPath = join(root, 'toongine.config.json')
   if (existsSync(configPath)) {
     try {
       const config = JSON.parse(readFileSync(configPath, 'utf-8'))
@@ -478,12 +478,12 @@ function mapInjectionPoints(scan: ProjectScan): InjectionPoint[] {
   }
 
   // 5. Config injection
-  const configPath = join(scan.projectRoot, 'yvon.config.json')
+  const configPath = join(scan.projectRoot, 'toongine.config.json')
   points.push({
     type: 'config',
     path: configPath,
     action: 'replace',
-    details: 'Add TOON configuration to yvon.config.json',
+    details: 'Add TOON configuration to toongine.config.json',
   })
 
   return points

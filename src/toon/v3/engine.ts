@@ -4,7 +4,7 @@
 // O(1) keyword lookup, O(k) per chunk scoring, O(n) BPE encoding.
 //
 // Usage:
-//   import { createEngine } from 'yvon-engine/toon/v3/engine'
+//   import { createEngine } from 'toongine/toon/v3/engine'
 //   const engine = createEngine('/root/yvon/.toon/v3/engine.bin')
 //   const ctx = engine.process({ systemPrompt, userMessage, agentId, ventureId })
 

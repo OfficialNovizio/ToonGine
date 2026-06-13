@@ -137,7 +137,7 @@ function createMCPClient() {
                 protocolVersion: '2024-11-05',
                 capabilities: {},
                 clientInfo: {
-                    name: 'yvon-engine',
+                    name: 'toongine',
                     version: '1.3.0',
                 },
             });

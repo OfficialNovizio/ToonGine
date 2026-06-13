@@ -2,7 +2,7 @@
 // src/toon/auto/middleware.ts — TOON Auto-Compression Middleware
 //
 // Runtime middleware. Every Claude/LLM call passes through this automatically
-// after `yvon integrate` wires it in. No manual code changes needed.
+// after `toongine integrate` wires it in. No manual code changes needed.
 //
 // What it does on EVERY call:
 // 1. Compress user prompt (dictionary substitution + template matching)

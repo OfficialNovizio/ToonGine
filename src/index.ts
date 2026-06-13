@@ -1,8 +1,8 @@
-// YVON Engine — AI Agent OS Kernel
+// ToonGine — AI Agent OS Kernel
 // 
 // One npm install. Full agent team. Automatic TOON-ification.
 // 
-// yvon-engine provides:
+// toongine provides:
 //   - TOON Auto-Conversion: Scans project, auto-wires TOON everywhere (prompts, docs, memory, API)
 //   - CIE: Context Intelligence Engine (classify → retrieve → rank → inject)
 //   - TOON: Token-Optimized Object Notation (84.5% token savings)
@@ -12,7 +12,7 @@
 //   - Hermes Bridge: TOON-compress Hermes memory, sessions, skills
 //
 // Usage:
-//   import { toonifyAll } from 'yvon-engine/toon/auto'
+//   import { toonifyAll } from 'toongine/toon/auto'
 //   const result = toonifyAll('/path/to/project')
 
 // ─── Main engine ──────────────────────────────────────────────────────────────

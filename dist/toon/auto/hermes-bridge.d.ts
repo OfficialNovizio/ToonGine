@@ -55,7 +55,7 @@ export interface HermesToonResult {
 }
 /**
  * Run full TOON-ification on all Hermes data for a project.
- * Called automatically during `yvon integrate` if Hermes is detected.
+ * Called automatically during `toongine integrate` if Hermes is detected.
  */
 export declare function toonifyHermes(projectRoot: string, hermesHome?: string): HermesToonResult;
 //# sourceMappingURL=hermes-bridge.d.ts.map

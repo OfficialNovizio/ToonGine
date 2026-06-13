@@ -38,7 +38,7 @@ function runHealthChecks() {
         name: 'Graphify',
         connected: graphifyOk,
         lastCheck: now,
-        details: graphifyOk ? 'Report found' : 'Not built — run: yvon graph',
+        details: graphifyOk ? 'Report found' : 'Not built — run: toongine graph',
     });
     const codegraphOk = (0, fs_1.existsSync)(config.codegraphReport);
     collector_1.metrics.setModuleStatus({

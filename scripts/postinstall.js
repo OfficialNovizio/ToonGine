@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Postinstall hook for yvon-engine
+// Postinstall hook for toongine
 // AUTO-TOONIFY: When installed as a dependency, automatically toon-ify the
 // parent project, wire CIE, inject dashboard, compile v3 engine.
 //
-// This only runs for the PARENT project, not when yvon-engine installs itself.
-// Detection: if package.json's name is NOT "yvon-engine", we're a dependency.
+// This only runs for the PARENT project, not when toongine installs itself.
+// Detection: if package.json's name is NOT "toongine", we're a dependency.
 
 const fs = require('fs')
 const path = require('path')
@@ -15,12 +15,12 @@ const cwd = process.env.INIT_CWD || process.cwd()
 const ownPkg = path.join(__dirname, '..', 'package.json')
 const parentPkg = path.join(cwd, 'package.json')
 
-// If we're installing yvon-engine itself (dev/CI), skip
+// If we're installing toongine itself (dev/CI), skip
 if (fs.existsSync(ownPkg)) {
   try {
     const own = JSON.parse(fs.readFileSync(ownPkg, 'utf-8'))
-    if (own.name === 'yvon-engine' && cwd === path.resolve(__dirname, '..')) {
-      // We ARE yvon-engine — building ourselves. Skip.
+    if (own.name === 'toongine' && cwd === path.resolve(__dirname, '..')) {
+      // We ARE toongine — building ourselves. Skip.
       process.exit(0)
     }
   } catch {}
@@ -32,7 +32,7 @@ if (!fs.existsSync(parentPkg)) {
 }
 
 // ── Detect what the parent project already has ────────────────────────────────
-console.log('\n  🔍 yvon-engine: Detecting project state...\n')
+console.log('\n  🔍 toongine: Detecting project state...\n')
 
 const state = {
   hasCIE: false,
@@ -49,8 +49,8 @@ const state = {
 const claudeRoute = path.join(cwd, 'app', 'api', 'claude', 'route.ts')
 if (fs.existsSync(claudeRoute)) {
   const content = fs.readFileSync(claudeRoute, 'utf-8')
-  state.hasCIE = content.includes('buildCieContext') || content.includes('yvon-engine/cie')
-  state.hasTOON = content.includes('autoToonMiddleware') || content.includes('yvon-engine/toon')
+  state.hasCIE = content.includes('buildCieContext') || content.includes('toongine/cie')
+  state.hasTOON = content.includes('autoToonMiddleware') || content.includes('toongine/toon')
 }
 
 // Check for v3 engine
@@ -59,8 +59,8 @@ state.hasV3 = fs.existsSync(path.join(cwd, '.toon', 'v3', 'engine.bin'))
 // Check for dashboard injection
 state.hasDashboard = fs.existsSync(path.join(cwd, 'app', 'settings', 'dashboard', 'page.tsx'))
 
-// Check for yvon config
-state.hasConfig = fs.existsSync(path.join(cwd, 'yvon.config.json'))
+// Check for toongine config
+state.hasConfig = fs.existsSync(path.join(cwd, 'toongine.config.json'))
 
 // Check for agents
 state.hasAgents = fs.existsSync(path.join(cwd, 'agent-department')) || 
@@ -91,24 +91,24 @@ if (!needsInit && !needsIntegrate && !needsV3) {
 }
 
 // ── Auto-integrate ───────────────────────────────────────────────────────────
-console.log('\n  ⚡ Auto-configuring yvon-engine...\n')
+console.log('\n  ⚡ Auto-configuring toongine...\n')
 
 try {
-  // Find the yvon CLI
-  const cliPath = path.join(__dirname, '..', 'cli', 'yvon.js')
+  // Find the toongine CLI
+  const cliPath = path.join(__dirname, '..', 'cli', 'toongine.js')
   if (!fs.existsSync(cliPath)) {
     console.log('  ⚠️  CLI not found — skipping auto-configuration')
-    console.log('  Run manually: npx yvon integrate\n')
+    console.log('  Run manually: npx toongine integrate\n')
     process.exit(0)
   }
 
   if (needsInit) {
-    console.log('  📦 Running: npx yvon init\n')
+    console.log('  📦 Running: npx toongine init\n')
     execSync(`node "${cliPath}" init`, { cwd, stdio: 'inherit' })
   }
 
   if (needsIntegrate) {
-    console.log('\n  🔌 Running: npx yvon integrate\n')
+    console.log('\n  🔌 Running: npx toongine integrate\n')
     execSync(`node "${cliPath}" integrate`, { cwd, stdio: 'inherit' })
   } else if (needsV3) {
     console.log('\n  🧠 Rebuilding V3 engine...\n')
@@ -119,12 +119,12 @@ try {
       console.log(`  ✅ V3 engine: ${result.chunkCount} chunks · ${result.indexSize} terms · ${result.bpeTokens} BPE tokens\n`)
     } catch (e) {
       console.log(`  ⚠️  V3 compile failed: ${e.message}`)
-      console.log('  Run: npx yvon integrate  to rebuild\n')
+      console.log('  Run: npx toongine integrate  to rebuild\n')
     }
   }
 
-  console.log('  ✅ yvon-engine auto-configuration complete!\n')
+  console.log('  ✅ toongine auto-configuration complete!\n')
 } catch (e) {
   console.log(`  ⚠️  Auto-configuration skipped: ${e.message}`)
-  console.log('  Run manually: npx yvon integrate\n')
+  console.log('  Run manually: npx toongine integrate\n')
 }

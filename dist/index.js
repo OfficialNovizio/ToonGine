@@ -1,9 +1,9 @@
 "use strict";
-// YVON Engine — AI Agent OS Kernel
+// ToonGine — AI Agent OS Kernel
 // 
 // One npm install. Full agent team. Automatic TOON-ification.
 // 
-// yvon-engine provides:
+// toongine provides:
 //   - TOON Auto-Conversion: Scans project, auto-wires TOON everywhere (prompts, docs, memory, API)
 //   - CIE: Context Intelligence Engine (classify → retrieve → rank → inject)
 //   - TOON: Token-Optimized Object Notation (84.5% token savings)
@@ -13,7 +13,7 @@
 //   - Hermes Bridge: TOON-compress Hermes memory, sessions, skills
 //
 // Usage:
-//   import { toonifyAll } from 'yvon-engine/toon/auto'
+//   import { toonifyAll } from 'toongine/toon/auto'
 //   const result = toonifyAll('/path/to/project')
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeFile = exports.resolverStats = exports.clearResolveCache = exports.resolveMany = exports.resolve = exports.bpeDecode = exports.bpeEncode = exports.trainBPE = exports.stem = exports.createV3Engine = exports.compile = exports.strip = exports.expandWithDictionary = exports.parseDictionaryBlock = exports.decodeToonResponse = exports.ABBREV_MAP = exports.generateDictionaryString = exports.encodePrompt = exports.encodeMemory = exports.encodeDocument = exports.toonifyHermes = exports.compressHermesSkill = exports.computeHermesSessionDelta = exports.compressHermesMemory = exports.autoToonMiddleware = exports.toonifyAll = exports.injectToon = exports.scanProject = exports.runHealthChecks = exports.metrics = exports.injectDashboard = exports.stopDashboard = exports.startDashboard = exports.createMCPClient = exports.invalidateConfig = exports.getConfig = exports.jaccardEstimate = exports.minhashSignature = exports.blastRadius = exports.ContextPriorityQueue = exports.TfidfIndex = exports.BloomFilter = exports.computeDelta = exports.getOrCreateState = exports.dictToLine = exports.buildDictionary = exports.compress = exports.toon = exports.classifyTask = exports.buildCieContext = void 0;

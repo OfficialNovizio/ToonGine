@@ -14,7 +14,7 @@
 // Expected: 30-50% size reduction on real project markdown with zero quality loss.
 //
 // Usage:
-//   import { strip } from 'yvon-engine/toon/v2/stripper'
+//   import { strip } from 'toongine/toon/v2/stripper'
 //   const skeleton = strip(markdownContent)
 
 // ─── Types ────────────────────────────────────────────────────────────────────

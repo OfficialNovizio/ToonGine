@@ -1,4 +1,4 @@
-// src/toon/v3/compile.ts — Build engine.bin on yvon integrate
+// src/toon/v3/compile.ts — Build engine.bin on toongine integrate
 //
 // Scans project docs + memories + Hermes Agent data, strips, chunks, indexes,
 // trains BPE, and compiles everything into engine.bin.

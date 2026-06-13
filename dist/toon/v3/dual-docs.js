@@ -8,7 +8,7 @@
 // This module serves the right version based on who's asking.
 //
 // Usage:
-//   import { readDoc } from 'yvon-engine/toon/v3/dual-docs'
+//   import { readDoc } from 'toongine/toon/v3/dual-docs'
 //   const human = readDoc('docs/novizio/CONTEXT.md', 'human')
 //   const llm   = readDoc('docs/novizio/CONTEXT.md', 'llm')
 //   const stats = docStats()  // how much we're saving

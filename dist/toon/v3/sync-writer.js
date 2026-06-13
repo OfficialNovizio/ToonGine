@@ -9,7 +9,7 @@
 //   3. engine.bin (reindexed chunk for query matching)
 //
 // Usage:
-//   import { writeFile } from 'yvon-engine/toon/v3/sync-writer'
+//   import { writeFile } from 'toongine/toon/v3/sync-writer'
 //   writeFile('agent-department/CEO/marcus/MEMORY.md', newContent)
 //   writeFile('docs/novizio/CONTEXT.md', newContent, 'both')
 Object.defineProperty(exports, "__esModule", { value: true });

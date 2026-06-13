@@ -179,13 +179,13 @@ function injectClaudeRoute(scan: ProjectScan, point: InjectionPoint, result: Inj
   let modified = false
 
   // Check if already injected
-  if (content.includes('yvon-engine/toon/auto') || content.includes('autoToonMiddleware')) {
+  if (content.includes('toongine/toon/auto') || content.includes('autoToonMiddleware')) {
     result.skipped.push(`${relative(scan.projectRoot, point.path)} (already TOON-injected)`)
     return
   }
 
   // 1. Add TOON auto import after existing imports
-  const importInsert = `import { autoToonMiddleware } from 'yvon-engine/toon/auto/middleware'\n`
+  const importInsert = `import { autoToonMiddleware } from 'toongine/toon/auto/middleware'\n`
   const lastImportRe = /(import\s+.+from\s+['"].+['"]\s*\n)(?!\s*import)/g
   const matches = [...content.matchAll(lastImportRe)]
   if (matches.length > 0) {
@@ -270,8 +270,8 @@ function injectApiRoute(scan: ProjectScan, point: InjectionPoint, result: Inject
 
   if (!hasRequestParam || !hasResponseJson) {
     // Add TOON import only (non-invasive)
-    if (!content.includes('yvon-engine/toon')) {
-      const toonImport = `import { toon } from 'yvon-engine/toon'\n`
+    if (!content.includes('toongine/toon')) {
+      const toonImport = `import { toon } from 'toongine/toon'\n`
       const firstImport = content.match(/^import\s+.+$/m)
       if (firstImport) {
         const pos = firstImport.index! + firstImport[0].length
@@ -291,8 +291,8 @@ function injectApiRoute(scan: ProjectScan, point: InjectionPoint, result: Inject
   // SAFETY: Only inject TOON import — response injection is too fragile
   // The import enables manual `toon.api()` calls; auto-injection of response
   // formatting often breaks because `data` and `request` scope varies per route.
-  if (!content.includes('yvon-engine/toon')) {
-    const toonImport = `import { toon } from 'yvon-engine/toon'\n`
+  if (!content.includes('toongine/toon')) {
+    const toonImport = `import { toon } from 'toongine/toon'\n`
     const firstImport = content.match(/^import\s+.+$/m)
     if (firstImport) {
       const pos = firstImport.index! + firstImport[0].length
@@ -400,7 +400,7 @@ function compileV3Engine(scan: ProjectScan, result: InjectionResult): void {
 // ─── Config Updater ───────────────────────────────────────────────────────────
 
 function updateProjectConfig(scan: ProjectScan, result: InjectionResult): void {
-  const configPath = join(scan.projectRoot, 'yvon.config.json')
+  const configPath = join(scan.projectRoot, 'toongine.config.json')
   let config: any = {}
 
   if (existsSync(configPath)) {

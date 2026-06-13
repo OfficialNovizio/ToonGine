@@ -32,7 +32,7 @@ export function injectDashboard(projectRoot: string, config?: any): InjectResult
     } else if (isVite) {
       injectVite(projectRoot, config, created, skipped)
     } else {
-      skipped.push('Unknown project type — dashboard available via npx yvon dashboard')
+      skipped.push('Unknown project type — dashboard available via npx toongine dashboard')
     }
   } catch (e: any) {
     errors.push(e.message)
@@ -107,7 +107,7 @@ export default function DashboardSettingsPage() {
   const [config, setConfig] = useState<any>(null)
 
   useEffect(() => {
-    fetch('/api/yvon-config').then(r => r.json()).then(setConfig).catch(() => {})
+    fetch('/api/toongine-config').then(r => r.json()).then(setConfig).catch(() => {})
 
     try {
       const ws = new WebSocket(\`ws://localhost:\${DASHBOARD_PORT}/api/live\`)
@@ -122,7 +122,7 @@ export default function DashboardSettingsPage() {
 
   async function toggleSetting(key: string) {
     try {
-      await fetch('/api/yvon-config', {
+      await fetch('/api/toongine-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, value: !config?.dashboard?.[key] })
@@ -151,7 +151,7 @@ export default function DashboardSettingsPage() {
           borderRadius: 14, padding: 20, marginTop: 20, marginBottom: 32
         }}>
           {[
-            { key: 'showInSettings', label: 'Show Dashboard in Settings', hint: 'When off, access via: npx yvon dashboard' },
+            { key: 'showInSettings', label: 'Show Dashboard in Settings', hint: 'When off, access via: npx toongine dashboard' },
             { key: 'autoStartOnDev', label: 'Auto-start with dev server', hint: 'Dashboard starts on port 4200 with npm run dev' },
           ].map(({ key, label, hint }) => (
             <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, cursor: 'pointer' }}>
@@ -180,7 +180,7 @@ export default function DashboardSettingsPage() {
               {connected ? 'Dashboard Connected' : 'Dashboard Offline'}
             </span>
             <span style={{ fontSize: 13, color: '#5a6478', marginLeft: 'auto' }}>
-              {connected ? 'WebSocket active' : 'Start with: npx yvon dashboard'}
+              {connected ? 'WebSocket active' : 'Start with: npx toongine dashboard'}
             </span>
           </div>
 
@@ -273,7 +273,7 @@ export default function DashboardSettingsPage() {
               {connected ? 'Waiting for data...' : 'Dashboard server not running. Start with:'}
               <br />
               <code style={{ color: '#00d4ff', marginTop: 8, display: 'inline-block' }}>
-                npx yvon dashboard
+                npx toongine dashboard
               </code>
             </div>
           )}

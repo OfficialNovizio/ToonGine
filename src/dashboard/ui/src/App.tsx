@@ -605,7 +605,7 @@ export default function App() {
       }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: -0.5 }}>
-            ⚡ YVON Engine
+            ⚡ ToonGine
           </h1>
           <div style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>v{version}</div>
         </div>
