@@ -21,6 +21,7 @@
     "./toon/v3/resolver": "./dist/toon/v3/resolver.js",
     "./toon/v3/sync-writer": "./dist/toon/v3/sync-writer.js",
     "./toon/v3/dual-docs": "./dist/toon/v3/dual-docs.js",
+    "./toon/v4/stratify": "./dist/toon/v4/stratify.js",
     "./agents": "./dist/agents/index.js",
     "./algorithms": "./dist/algorithms/index.js",
     "./adapters": "./dist/adapters/index.js",
