@@ -1,114 +1,91 @@
 # ToonGine
 
-**AI Agent OS Kernel — One npm install. Full agent team.**
+**AI Agent OS Kernel — One `npm install`. 24 agents, 8 departments, TOON-compressed.**
 
 ```bash
 npm install toongine
-npx toongine init
 ```
 
-## What You Get
+## What Ships
 
 | Feature | Description |
-|---------|-------------|
+|---|---|
+| **24 Agents** | 8 departments: CEO, COO, Command, Finance, Legal, Marketing, Psychology, Research, Sense, Technical |
+| **TOON Compiler** | 4-phase pipeline: parse → schema detect → abbreviate → V3 index. ~80%+ token savings |
+| **Agent Registry** | Manifest-based agent system with level-gating, council roles, and validation |
+| **CONSTITUTION** | 10 immutable laws injected into every agent spawn |
+| **Knowledge Graphs** | graphify + codegraph — stored under `.toon/graphs/` |
 | **CIE** | Context Intelligence Engine — auto-injects relevant context into every LLM call |
-| **13 Agents** | Marcus (CEO), Dev (CTO), Mia (Frontend), Raj (Backend), Quinn (QA), Lena (Brand), Kai (Analyst), Nate (Growth), Atlas (Art), Pixel (Production), Felix (Finance), Diana (COO), Kahneman (Psychology) |
-| **TOON** | Token-Optimized Object Notation — 84.5% token savings on data tasks |
-| **Knowledge Graphs** | graphify (code structure) + codegraph (dependencies) |
-| **Hermes Sync** | Bidirectional CRDT memory sync with Hermes agent |
-| **Self-Healing** | Circuit breakers, auto-rebuild, health monitoring |
-| **Adaptive** | Detects existing features, fills gaps only |
-
-## Quick Start
-
-```bash
-# Install
-npm install toongine
-
-# Initialize (auto-detects existing features)
-npx toongine init
-
-# Health check
-npx toongine doctor
-
-# Wire into your API route
-```
-
-```typescript
-import { buildCieContext } from 'toongine'
-
-// In your Claude/DeepSeek API route:
-const cie = buildCieContext({
-  agentId: 'dev-lead',
-  task: userMessage,
-  venture: 'my-project',
-})
-
-// cie.systemExtension → prose rules for system prompt
-// cie.dataBlock → TOON-formatted structural data
-```
+| **Hermes Generator** | Auto-generates Hermes skill files for all 24 agents |
+| **Dual-Docs Resolver** | Serves `.toon` compressed or `.md` original — auto-fallback |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────┐
-│         TOONGINE                  │
-│                                      │
-│  CIE (classify → retrieve → rank)    │
-│       ↓                              │
-│  Knowledge Sources                   │
-│    graphify | codegraph              │
-│    agent memory | hermes             │
-│    project docs | venture            │
-│       ↓                              │
-│  TOON Compression                    │
-│    dense | api | js | claude         │
-│       ↓                              │
-│  LLM Call (Anthropic/OpenAI/any)     │
-│       ↓                              │
-│  Outcome → Self-Improvement          │
-└─────────────────────────────────────┘
+npm install toongine
+       │
+       ▼  postinstall.js
+       │
+       ├── .toon/memory/agent-department/  (24 agents)
+       ├── .toon/memory/agent-memory/     (TOON-compiled)
+       ├── .toon/graphs/                  (knowledge graphs)
+       ├── .toon/docs/                    (CONSTITUTION + ENGINE)
+       └── docs/                          (human-readable copies)
+
+YVON OS (consumer) reads from .toon/ at runtime
 ```
 
-## Algorithms
+## Agent Departments
 
-| Algorithm | Purpose | Complexity |
-|-----------|---------|:----------:|
-| Bloom Filter | Context dedup | O(1) |
-| MinHash | Near-duplicate detection | O(n) |
-| TF-IDF | Relevance scoring | O(n·m) |
-| Priority Queue | Top-K capped selection | O(n log k) |
-| BFS | Blast radius analysis | O(V+E) |
-| Circuit Breaker | Failure isolation | O(1) |
+| Department | Agents | Level |
+|---|---|---|
+| **Command** | Board | L1 — full access |
+| **CEO** | Marcus | L1 — orchestrator, final say |
+| **COO** | Diana | L1 — operations, sprint planning |
+| **Finance** | Felix | L2 — financial intelligence |
+| **Psychology** | Kahneman | L2 — bias audit, decision review |
+| **Legal** | Docs, Comply, Guard | L2-L3 — constitution, compliance |
+| **Research** | Vette, Depth, Synth | L3 — deep research pipeline |
+| **Sense** | Scout, Radar, Forge | L3 — intelligence gathering |
+| **Marketing** | Kai, Lena, Rio, Nate, Atlas, Pixel | L2-L3 |
+| **Technical** | Dev, Mia, Raj, Quinn | L2-L3 |
+
+## Quick Start
+
+```bash
+npm install toongine
+npx toongine doctor       # health check
+npx toongine agents       # list 24 agents
+npx toongine compile      # TOON-compile all .md files
+npx toongine dashboard    # live dashboard at localhost:4200
+```
+
+## API
+
+```typescript
+// CIE — context injection
+import { buildCieContext } from 'toongine'
+
+// TOON compiler
+import { compileFile, compileAll } from 'toongine/toon'
+
+// Agent registry
+import { loadRegistry, getAgent } from 'toongine/agents'
+
+// Dual-docs resolver
+import { resolve, readDoc } from 'toongine/toon/v3/dual-docs'
+
+// Hermes skill generator
+import { generateHermesSkills } from 'toongine/agents'
+```
 
 ## Provider Support
 
-Works with any OpenAI-compatible API:
-- Anthropic (Claude)
-- OpenAI (GPT-4)
-- DeepSeek
-- xAI (Grok)
-- Google (Gemini)
-- Custom endpoints
+OpenAI-compatible API: Anthropic, OpenAI, DeepSeek, xAI, Google, custom.
 
 ## Database Support
 
-Pluggable adapters:
-- Supabase
-- PostgreSQL
-- SQLite
-- In-memory
-
-## CLI Commands
-
-```bash
-toongine init          # Initialize engine
-toongine doctor        # Health check
-toongine graph         # Rebuild knowledge graphs
-toongine agents        # Agent status
-toongine compress      # Compression stats
-toongine dashboard     # TOON visual dashboard
-```
+Pluggable: Supabase, PostgreSQL, SQLite, in-memory.
 
 ## License
 
