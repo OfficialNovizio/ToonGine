@@ -366,6 +366,23 @@ function extractIndexTerms(compressed, sourcePath) {
 function compileFile(sourcePath, projectRoot, dict) {
     const start = Date.now();
     const fullSourcePath = path.resolve(projectRoot, sourcePath);
+    // Guard: skip hand-crafted foundation files
+    const foundationFiles = ['docs/CONSTITUTION.md', 'docs/ENGINE.md'];
+    if (foundationFiles.includes(sourcePath)) {
+        const sourceSize = fs.existsSync(fullSourcePath) ? fs.statSync(fullSourcePath).size : 0;
+        const destBase = sourcePath.replace(/^docs\//, '').replace(/\.md$/, '.toon');
+        return {
+            sourcePath,
+            destPath: `.toon/docs/${destBase}`,
+            sourceSize,
+            compressedSize: sourceSize,
+            savingsPercent: 0,
+            durationMs: Date.now() - start,
+            sections: 0,
+            abbreviationsApplied: 0,
+            error: 'SKIPPED: foundation file (hand-crafted TOON)',
+        };
+    }
     try {
         // Read source
         const content = fs.readFileSync(fullSourcePath, 'utf-8');

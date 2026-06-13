@@ -94,6 +94,93 @@ if (!needsInit && !needsIntegrate && !needsV3) {
 console.log('\n  ⚡ Auto-configuring toongine...\n')
 
 try {
+  // ── Step 0: Deploy agent templates (always) ────────────────────────────────
+  console.log('  👥 Deploying agent system...\n')
+  const templateRoot = path.join(__dirname, '..', 'templates')
+  
+  function copyDir(src, dest, overwrite = false) {
+    if (!fs.existsSync(src)) return 0
+    let count = 0
+    mkdir(dest)
+    for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+      const s = path.join(src, entry.name)
+      const d = path.join(dest, entry.name)
+      if (entry.isDirectory()) {
+        count += copyDir(s, d, overwrite)
+      } else if (overwrite || !fs.existsSync(d)) {
+        fs.copyFileSync(s, d)
+        count++
+      }
+    }
+    return count
+  }
+
+  // Deploy agents (never overwrite existing user-modified agent files)
+  const agentSrc = path.join(templateRoot, 'agents')
+  const agentDest = path.join(cwd, 'agent-department')
+  if (fs.existsSync(agentSrc)) {
+    const agentCount = copyDir(agentSrc, agentDest, false)
+    const deptCount = fs.readdirSync(agentDest).filter(d => 
+      fs.statSync(path.join(agentDest, d)).isDirectory()
+    ).length
+    console.log(`  ✅ ${agentCount} agent files · ${deptCount} departments deployed`)
+  }
+
+  // Deploy lib (agent spawner — overwrite for updates)
+  const libSrc = path.join(templateRoot, 'lib')
+  const libDest = path.join(cwd, 'lib')
+  if (fs.existsSync(libSrc)) {
+    copyDir(libSrc, libDest, true)
+    console.log('  ✅ lib/hermes-spawn.ts deployed')
+  }
+
+  // Deploy council API
+  const apiSrc = path.join(templateRoot, 'api')
+  const apiDest = path.join(cwd, 'app', 'api')
+  if (fs.existsSync(apiSrc)) {
+    copyDir(apiSrc, apiDest, true)
+    console.log('  ✅ Council API deployed')
+  }
+
+  // Deploy council screen
+  const screenSrc = path.join(templateRoot, 'screens')
+  const screenDest = path.join(cwd, 'app')
+  if (fs.existsSync(screenSrc)) {
+    copyDir(screenSrc, screenDest, true)
+    console.log('  ✅ Advisory Council UI deployed')
+  }
+
+  // Deploy foundation docs (CONSTITUTION + ENGINE)
+  const docsSrc = path.join(templateRoot, 'docs')
+  const docsDest = path.join(cwd, 'docs')
+  const toonDest = path.join(cwd, '.toon', 'docs')
+  if (fs.existsSync(docsSrc)) {
+    for (const f of fs.readdirSync(docsSrc)) {
+      const s = path.join(docsSrc, f)
+      if (f.endsWith('.toon')) {
+        mkdir(toonDest)
+        if (!fs.existsSync(path.join(toonDest, f))) {
+          fs.copyFileSync(s, path.join(toonDest, f))
+        }
+      } else {
+        if (!fs.existsSync(path.join(docsDest, f))) {
+          fs.copyFileSync(s, path.join(docsDest, f))
+        }
+      }
+    }
+    console.log('  ✅ CONSTITUTION + ENGINE deployed')
+  }
+
+  // Generate Hermes skills
+  try {
+    const { generateHermesSkills } = require('../dist/agents/hermes-generator')
+    const results = generateHermesSkills(cwd)
+    console.log(`  ✅ ${results.filter(r => r.written).length} Hermes skills generated`)
+  } catch (e) {
+    console.log('  ⚠️  Hermes skill generation skipped (dev only)')
+  }
+
+  console.log('')
   // Find the toongine CLI
   const cliPath = path.join(__dirname, '..', 'cli', 'toongine.js')
   if (!fs.existsSync(cliPath)) {
