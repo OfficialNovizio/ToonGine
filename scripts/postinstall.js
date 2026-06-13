@@ -126,30 +126,6 @@ try {
     console.log(`  ✅ ${agentCount} agent files · ${deptCount} departments deployed`)
   }
 
-  // Deploy lib (agent spawner — overwrite for updates)
-  const libSrc = path.join(templateRoot, 'lib')
-  const libDest = path.join(cwd, 'lib')
-  if (fs.existsSync(libSrc)) {
-    copyDir(libSrc, libDest, true)
-    console.log('  ✅ lib/hermes-spawn.ts deployed')
-  }
-
-  // Deploy council API
-  const apiSrc = path.join(templateRoot, 'api')
-  const apiDest = path.join(cwd, 'app', 'api')
-  if (fs.existsSync(apiSrc)) {
-    copyDir(apiSrc, apiDest, true)
-    console.log('  ✅ Council API deployed')
-  }
-
-  // Deploy council screen
-  const screenSrc = path.join(templateRoot, 'screens')
-  const screenDest = path.join(cwd, 'app')
-  if (fs.existsSync(screenSrc)) {
-    copyDir(screenSrc, screenDest, true)
-    console.log('  ✅ Advisory Council UI deployed')
-  }
-
   // Deploy foundation docs (CONSTITUTION + ENGINE)
   const docsSrc = path.join(templateRoot, 'docs')
   const docsDest = path.join(cwd, 'docs')
