@@ -414,6 +414,7 @@ function init() {
     ['.toon/agents/.gitkeep', ''],
     ['.toon/docs/ventures/.gitkeep', ''],
     ['.toon/v3/.gitkeep', ''],
+    ['.toon/hermes/.gitkeep', ''],
   ]
 
   console.log('  📁 Building .toon/ project structure...\n')
@@ -426,6 +427,21 @@ function init() {
       if (content) fs.writeFileSync(full, content)
       console.log(`  📦 ${file}`)
     }
+  }
+
+  // ─── Create Hermes bridge config ──────────────────────────────────────
+  const hermesConfigPath = path.join(cwd, '.toon', 'hermes', 'config.json')
+  if (!fs.existsSync(hermesConfigPath)) {
+    const hermesCfg = {
+      connected: false,
+      hermesHome: path.join(os.homedir(), '.hermes'),
+      sync: { memories: true, skills: true, sessions: true, cron: false },
+      bridge: { enabled: false, direction: 'bidirectional', autoSync: false },
+      lastSync: null,
+      agentProfile: null
+    }
+    fs.writeFileSync(hermesConfigPath, JSON.stringify(hermesCfg, null, 2))
+    console.log('  📦 .toon/hermes/config.json')
   }
 
   // ─── Ensure CLAUDE.md exists at root ────────────────────────────────────
@@ -1109,10 +1125,51 @@ function hermes() {
       cfg.bridge.direction = 'bidirectional'
       cfg.lastSync = new Date().toISOString()
       fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2))
+
+      // Sync Hermes data into .toon/
+      const toonHermesDir = path.join(cwd, '.toon', 'memory', 'hermes')
+      fs.mkdirSync(toonHermesDir, { recursive: true })
+      let synced = 0
+
+      // Sync memories
+      const hermesMemDir = path.join(hermesHome, 'memories')
+      if (fs.existsSync(hermesMemDir)) {
+        for (const f of fs.readdirSync(hermesMemDir)) {
+          if (f.endsWith('.md')) {
+            const src = path.join(hermesMemDir, f)
+            const dest = path.join(toonHermesDir, f)
+            if (!fs.existsSync(dest) || fs.statSync(src).mtime > fs.statSync(dest).mtime) {
+              fs.copyFileSync(src, dest)
+              synced++
+            }
+          }
+        }
+      }
+
+      // Sync skills
+      const hermesSkillsDir = path.join(hermesHome, 'skills')
+      const toonSkillsDir = path.join(toonHermesDir, 'skills')
+      if (fs.existsSync(hermesSkillsDir)) {
+        fs.mkdirSync(toonSkillsDir, { recursive: true })
+        function copyDir(src, dest) {
+          for (const f of fs.readdirSync(src, { withFileTypes: true })) {
+            const sp = path.join(src, f.name)
+            const dp = path.join(dest, f.name)
+            if (f.isDirectory()) { fs.mkdirSync(dp, { recursive: true }); copyDir(sp, dp) }
+            else if (!fs.existsSync(dp) || fs.statSync(sp).mtime > fs.statSync(dp).mtime) {
+              fs.copyFileSync(sp, dp)
+              synced++
+            }
+          }
+        }
+        copyDir(hermesSkillsDir, toonSkillsDir)
+      }
+
       console.log('\n  🔗 Hermes connected!')
       console.log(`  📂 ${hermesHome}`)
+      console.log(`  📥 ${synced} files synced → .toon/memory/hermes/`)
       console.log('  ↔️  Bidirectional sync: memories, skills, sessions')
-      console.log('\n  Run `toongine sync` to pull Hermes data into .toon/\n')
+      console.log('\n  Run `toongine sync` anytime to refresh.\n')
       break
     }
     case 'disconnect': {
