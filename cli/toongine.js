@@ -1103,9 +1103,11 @@ function hermes() {
   const cwd = process.cwd()
   const configPath = path.join(cwd, '.toon', 'hermes', 'config.json')
 
-  // Parse --path flag for custom Hermes location
+  // Parse flags
   const pathFlagIdx = process.argv.indexOf('--path')
+  const remoteFlagIdx = process.argv.indexOf('--remote')
   const customPath = pathFlagIdx !== -1 ? process.argv[pathFlagIdx + 1] : null
+  const remoteHost = remoteFlagIdx !== -1 ? process.argv[remoteFlagIdx + 1] : null
 
   // ─── Smart Hermes detection ──────────────────────────────────────────────
   function detectHermes() {
@@ -1114,45 +1116,68 @@ function hermes() {
     // 1. Custom --path flag (highest priority)
     if (customPath) {
       const p = customPath.replace(/^~/, os.homedir())
-      candidates.push({ path: p, source: '--path flag' })
+      candidates.push({ path: p, source: '--path flag', remote: false })
     }
 
-    // 2. Default ~/.hermes/
-    const defaultHome = path.join(os.homedir(), '.hermes')
-    candidates.push({ path: defaultHome, source: 'default (~/.hermes/)' })
+    // 2. Remote VPS via SSH
+    if (remoteHost) {
+      candidates.push({ path: '~/.hermes', source: `--remote ${remoteHost}`, remote: true, host: remoteHost })
+    }
 
-    // 3. Try to find via hermes binary
-    try {
-      const hermesBin = require('child_process').execSync('which hermes 2>/dev/null || where hermes 2>/dev/null', { encoding: 'utf-8', timeout: 3000 }).trim()
-      if (hermesBin) {
-        // hermes config is usually at ~/.hermes/ regardless of binary location
-        // but we already check that above
-      }
-    } catch {}
+    // 3. Default local ~/.hermes/
+    const defaultHome = path.join(os.homedir(), '.hermes')
+    candidates.push({ path: defaultHome, source: 'local (~/.hermes/)', remote: false })
 
     for (const c of candidates) {
-      // Check multiple indicators (any one is enough)
-      const hasConfig = fs.existsSync(path.join(c.path, 'config.yaml'))
-      const hasMemories = fs.existsSync(path.join(c.path, 'memories'))
-      const hasSkills = fs.existsSync(path.join(c.path, 'skills'))
-      const hasUserMd = fs.existsSync(path.join(c.path, 'memories', 'USER.md'))
+      if (c.remote) {
+        // Check remote Hermes via SSH
+        try {
+          const result = require('child_process').execSync(
+            `ssh -o ConnectTimeout=5 -o BatchMode=yes ${c.host} 'test -d ~/.hermes && echo FOUND || echo NOT_FOUND'`,
+            { encoding: 'utf-8', timeout: 8000 }
+          ).trim()
+          if (result === 'FOUND') {
+            const details = require('child_process').execSync(
+              `ssh -o ConnectTimeout=5 -o BatchMode=yes ${c.host} 'test -f ~/.hermes/config.yaml && echo Y || echo N; test -d ~/.hermes/memories && echo Y || echo N; test -d ~/.hermes/skills && echo Y || echo N; test -f ~/.hermes/memories/USER.md && echo Y || echo N'`,
+              { encoding: 'utf-8', timeout: 8000 }
+            ).trim().split('\n')
+            return {
+              found: true,
+              home: `${c.host}:~/.hermes`,
+              source: c.source,
+              remote: true,
+              host: c.host,
+              details: {
+                config: details[0] === 'Y',
+                memories: details[1] === 'Y',
+                skills: details[2] === 'Y',
+                userMd: details[3] === 'Y',
+              }
+            }
+          }
+        } catch (e) {
+          // SSH failed or timed out — skip this candidate
+        }
+      } else {
+        // Local check
+        const hasConfig = fs.existsSync(path.join(c.path, 'config.yaml'))
+        const hasMemories = fs.existsSync(path.join(c.path, 'memories'))
+        const hasSkills = fs.existsSync(path.join(c.path, 'skills'))
+        const hasUserMd = fs.existsSync(path.join(c.path, 'memories', 'USER.md'))
 
-      if (hasConfig || hasMemories || hasSkills) {
-        return {
-          found: true,
-          home: c.path,
-          source: c.source,
-          details: {
-            config: hasConfig,
-            memories: hasMemories,
-            skills: hasSkills,
-            userMd: hasUserMd,
+        if (hasConfig || hasMemories || hasSkills) {
+          return {
+            found: true,
+            home: c.path,
+            source: c.source,
+            remote: false,
+            details: { config: hasConfig, memories: hasMemories, skills: hasSkills, userMd: hasUserMd }
           }
         }
       }
     }
 
-    return { found: false, home: defaultHome, source: 'none', details: { config: false, memories: false, skills: false, userMd: false } }
+    return { found: false, home: defaultHome, source: 'none', remote: false, details: { config: false, memories: false, skills: false, userMd: false } }
   }
 
   const detection = detectHermes()
@@ -1187,13 +1212,15 @@ function hermes() {
         console.log('\n  ❌ Hermes Agent not found')
         console.log('')
         console.log('  Checked:')
-        console.log(`    • ${detection.home}  ← not found`)
+        if (detection.remote) console.log(`    • --remote ${detection.host}  ← SSH failed or no Hermes there`)
+        else console.log(`    • ${detection.home}  ← not found`)
         if (customPath) console.log(`    • (custom --path: ${customPath})`)
         console.log('')
         console.log('  To fix:')
-        console.log('    1. Install:  pip install hermes-agent && hermes setup')
-        console.log('    2. Or specify: npx toongine hermes connect --path /your/hermes/home')
-        console.log('    3. Detect:   npx toongine hermes detect')
+        console.log('    1. Local:   pip install hermes-agent && hermes setup')
+        console.log('    2. Remote:  npx toongine hermes connect --remote user@vps-host')
+        console.log('    3. Custom:  npx toongine hermes connect --path /your/hermes/home')
+        console.log('    4. Detect:  npx toongine hermes detect')
         console.log('')
         return
       }
@@ -1206,58 +1233,86 @@ function hermes() {
       cfg.lastSync = new Date().toISOString()
       fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2))
 
-      // Sync Hermes data into .toon/memory/hermes/
       const toonHermesDir = path.join(cwd, '.toon', 'memory', 'hermes')
       fs.mkdirSync(toonHermesDir, { recursive: true })
       let synced = 0
 
-      // Sync memories (all .md files, not just USER.md)
-      const hermesMemDir = path.join(detection.home, 'memories')
-      if (fs.existsSync(hermesMemDir)) {
-        function syncMemDir(dir, destDir) {
-          for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
-            const sp = path.join(dir, f.name)
-            const dp = path.join(destDir, f.name)
-            if (f.isDirectory()) {
-              fs.mkdirSync(dp, { recursive: true })
-              syncMemDir(sp, dp)
-            } else if (f.name.endsWith('.md') || f.name.endsWith('.json') || f.name.endsWith('.yaml')) {
-              if (!fs.existsSync(dp) || fs.statSync(sp).mtime > fs.statSync(dp).mtime) {
+      if (detection.remote) {
+        // ── Remote sync via rsync ──────────────────────────────────────
+        console.log('\n  📡 Connecting to remote Hermes...')
+        try {
+          // Sync memories
+          const memResult = require('child_process').execSync(
+            `rsync -avz --include='*.md' --include='*.json' --include='*.yaml' --include='*/' --exclude='*' -e 'ssh -o ConnectTimeout=5' ${detection.host}:~/.hermes/memories/ ${toonHermesDir}/`,
+            { encoding: 'utf-8', timeout: 30000 }
+          )
+          const memLines = memResult.split('\n').filter(l => l && !l.startsWith('sending') && !l.startsWith('sent') && !l.startsWith('total'))
+          synced += memLines.length
+
+          // Sync skills
+          fs.mkdirSync(path.join(toonHermesDir, 'skills'), { recursive: true })
+          const skillResult = require('child_process').execSync(
+            `rsync -avz -e 'ssh -o ConnectTimeout=5' ${detection.host}:~/.hermes/skills/ ${toonHermesDir}/skills/`,
+            { encoding: 'utf-8', timeout: 60000 }
+          )
+          const skillLines = skillResult.split('\n').filter(l => l && !l.startsWith('sending') && !l.startsWith('sent') && !l.startsWith('total'))
+          synced += skillLines.length
+
+          // Sync config
+          require('child_process').execSync(
+            `scp -o ConnectTimeout=5 ${detection.host}:~/.hermes/config.yaml ${toonHermesDir}/hermes-config.yaml 2>/dev/null`,
+            { encoding: 'utf-8', timeout: 10000 }
+          )
+        } catch (e) {
+          console.log(`  ⚠️  rsync partial: ${e.message.split('\n')[0]}`)
+        }
+      } else {
+        // ── Local sync (file copy) ────────────────────────────────────
+        const hermesMemDir = path.join(detection.home, 'memories')
+        if (fs.existsSync(hermesMemDir)) {
+          function syncMemDir(dir, destDir) {
+            for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+              const sp = path.join(dir, f.name)
+              const dp = path.join(destDir, f.name)
+              if (f.isDirectory()) {
+                fs.mkdirSync(dp, { recursive: true })
+                syncMemDir(sp, dp)
+              } else if (f.name.endsWith('.md') || f.name.endsWith('.json') || f.name.endsWith('.yaml')) {
+                if (!fs.existsSync(dp) || fs.statSync(sp).mtime > fs.statSync(dp).mtime) {
+                  fs.copyFileSync(sp, dp)
+                  synced++
+                }
+              }
+            }
+          }
+          syncMemDir(hermesMemDir, toonHermesDir)
+        }
+
+        const hermesSkillsDir = path.join(detection.home, 'skills')
+        const toonSkillsDir = path.join(toonHermesDir, 'skills')
+        if (fs.existsSync(hermesSkillsDir)) {
+          fs.mkdirSync(toonSkillsDir, { recursive: true })
+          function copyDir(src, dest) {
+            for (const f of fs.readdirSync(src, { withFileTypes: true })) {
+              const sp = path.join(src, f.name)
+              const dp = path.join(dest, f.name)
+              if (f.isDirectory()) { fs.mkdirSync(dp, { recursive: true }); copyDir(sp, dp) }
+              else if (!fs.existsSync(dp) || fs.statSync(sp).mtime > fs.statSync(dp).mtime) {
                 fs.copyFileSync(sp, dp)
                 synced++
               }
             }
           }
+          copyDir(hermesSkillsDir, toonSkillsDir)
         }
-        syncMemDir(hermesMemDir, toonHermesDir)
-      }
 
-      // Sync skills
-      const hermesSkillsDir = path.join(detection.home, 'skills')
-      const toonSkillsDir = path.join(toonHermesDir, 'skills')
-      if (fs.existsSync(hermesSkillsDir)) {
-        fs.mkdirSync(toonSkillsDir, { recursive: true })
-        function copyDir(src, dest) {
-          for (const f of fs.readdirSync(src, { withFileTypes: true })) {
-            const sp = path.join(src, f.name)
-            const dp = path.join(dest, f.name)
-            if (f.isDirectory()) { fs.mkdirSync(dp, { recursive: true }); copyDir(sp, dp) }
-            else if (!fs.existsSync(dp) || fs.statSync(sp).mtime > fs.statSync(dp).mtime) {
-              fs.copyFileSync(sp, dp)
-              synced++
-            }
+        const hermesConfig = path.join(detection.home, 'config.yaml')
+        if (fs.existsSync(hermesConfig)) {
+          const dest = path.join(toonHermesDir, 'hermes-config.yaml')
+          if (!fs.existsSync(dest) || fs.statSync(hermesConfig).mtime > fs.statSync(dest).mtime) {
+            fs.copyFileSync(hermesConfig, dest)
+            synced++
           }
-        }
-        copyDir(hermesSkillsDir, toonSkillsDir)
-      }
-
-      // Sync config.yaml
-      const hermesConfig = path.join(detection.home, 'config.yaml')
-      if (fs.existsSync(hermesConfig)) {
-        const dest = path.join(toonHermesDir, 'hermes-config.yaml')
-        if (!fs.existsSync(dest) || fs.statSync(hermesConfig).mtime > fs.statSync(dest).mtime) {
-          fs.copyFileSync(hermesConfig, dest)
-          synced++
         }
       }
 
@@ -1290,12 +1345,14 @@ function hermes() {
       } else {
         console.log('  Hermes Agent: ⚠️  Not detected')
       }
-      console.log('\n  Commands:')
-      console.log('    toongine hermes connect           — connect to existing Hermes')
-      console.log('    toongine hermes connect --path X  — connect at custom path')
-      console.log('    toongine hermes detect            — scan for Hermes installation')
-      console.log('    toongine hermes disconnect        — disconnect')
-      console.log('    toongine hermes status            — this view\n')
+      console.log('\\n  Commands:')
+      console.log('    toongine hermes connect               — connect local Hermes')
+      console.log('    toongine hermes connect --remote host — connect VPS Hermes via SSH')
+      console.log('    toongine hermes connect --path /path  — connect at custom path')
+      console.log('    toongine hermes detect                — scan for Hermes')
+      console.log('    toongine hermes detect --remote host  — scan remote VPS')
+      console.log('    toongine hermes disconnect            — disconnect')
+      console.log('    toongine hermes status                — this view\\n')
       break
     }
     default:
