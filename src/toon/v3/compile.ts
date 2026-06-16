@@ -41,8 +41,11 @@ export function compile(options: CompileOptions): CompileResult {
     ...collectFiles(join(root, 'agent-department'), '.md').filter(f => f.includes('MEMORY') || f.includes('AGENT')),
     ...collectFiles(join(root, 'agent-memory'), '.md').filter(f => f.includes('MEMORY') || f.includes('AGENT')),
   ]
-  const graphs = collectFiles(join(root, 'graphify-out'), '.md')
-  const graphJson = collectFiles(join(root, 'graphify-out'), '.json')
+  const graphsMd = collectFiles(join(root, '.toon', 'graphify'), '.md')
+  const graphsToon = collectFiles(join(root, '.toon', 'graphify'), '.toon')
+  const graphsJson = collectFiles(join(root, '.toon', 'graphify'), '.json')
+  const codegraphMd = collectFiles(join(root, '.toon', 'codegraph'), '.md')
+  const codegraphToon = collectFiles(join(root, '.toon', 'codegraph'), '.toon')
   const claudeMd = existsSync(join(root, 'CLAUDE.md')) ? [join(root, 'CLAUDE.md')] : []
   const supabaseMigrations = collectFiles(join(root, 'supabase'), '.sql')
   const scriptsDir = collectFiles(join(root, 'scripts'), '.mjs')
@@ -63,13 +66,14 @@ export function compile(options: CompileOptions): CompileResult {
   // Also scan .toon/ directories if originals absorbed
   const toonDocs = collectFiles(join(root, '.toon', 'docs'), '.toon')
   const toonMemory = collectFiles(join(root, '.toon', 'memory'), '.toon')
-  const toonGraphs = collectFiles(join(root, '.toon', 'graphs'), '.toon')
+  const toonGraphs = collectFiles(join(root, '.toon', 'graphify'), '.toon')
+  const toonCodegraph = collectFiles(join(root, '.toon', 'codegraph'), '.toon')
   const toonProject = existsSync(join(root, '.toon', 'project', 'CLAUDE.md')) ? [join(root, '.toon', 'project', 'CLAUDE.md')] : []
 
   const allFiles = [
-    ...docs, ...mems, ...graphs, ...graphJson, ...claudeMd,
+    ...docs, ...mems, ...graphsMd, ...graphsToon, ...graphsJson, ...codegraphMd, ...codegraphToon, ...claudeMd,
     ...supabaseMigrations, ...scriptsDir, ...envTemplate,
-    ...toonDocs, ...toonMemory, ...toonGraphs, ...toonProject,
+    ...toonDocs, ...toonMemory, ...toonGraphs, ...toonCodegraph, ...toonProject,
     ...hermesMemories, ...hermesSkills, ...hermesSessions,
   ]
 

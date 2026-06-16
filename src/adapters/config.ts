@@ -57,8 +57,8 @@ export function getConfig(): EngineConfig {
   
   return {
     projectRoot: root,
-    graphifyReport: fileConfig.graphifyReport ?? join(root, 'graphify-out', 'GRAPH_REPORT.md'),
-    codegraphReport: fileConfig.codegraphReport ?? join(root, 'graphify-out', 'CODEGRAPH_REPORT.md'),
+    graphifyReport: fileConfig.graphifyReport ?? join(root, '.toon', 'graphify', 'GRAPH_REPORT.md'),
+    codegraphReport: fileConfig.codegraphReport ?? join(root, '.toon', 'codegraph', 'CODEGRAPH_REPORT.md'),
     agentMemoryDir: fileConfig.agentMemoryDir ?? join(root, 'agent-memory'),
     hermesMemoryDir: fileConfig.hermesMemoryDir ?? join(homedir(), '.hermes', 'memories'),
     projectClaudePath: fileConfig.projectClaudePath ?? join(root, 'CLAUDE.md'),

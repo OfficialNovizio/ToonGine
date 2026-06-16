@@ -46,7 +46,7 @@ function scanFiles(dir: string, pattern: RegExp): string[] {
   try {
     for (const entry of readdirSync(dir)) {
       if (entry === 'node_modules' || entry === '.git' || entry === 'dist' ||
-          entry === '.next' || entry === '__pycache__' || entry === 'graphify-out')
+          entry === '.next' || entry === '__pycache__' || entry === '.toon')
         continue
       const full = join(dir, entry)
       try {
@@ -338,16 +338,18 @@ function generateGraphifyReport(report: GraphReport): string {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export function buildAllGraphs(rootDir: string): { graphify: string; codegraph: string } {
-  const outDir = join(rootDir, 'graphify-out')
-  mkdirSync(outDir, { recursive: true })
+  const graphifyDir = join(rootDir, '.toon', 'graphify')
+  const codegraphDir = join(rootDir, '.toon', 'codegraph')
+  mkdirSync(graphifyDir, { recursive: true })
+  mkdirSync(codegraphDir, { recursive: true })
 
   const codegraph = buildCodegraph(rootDir)
   const codegraphMd = generateCodegraphReport(codegraph)
-  writeFileSync(join(outDir, 'CODEGRAPH_REPORT.md'), codegraphMd)
+  writeFileSync(join(codegraphDir, 'CODEGRAPH_REPORT.md'), codegraphMd)
 
   const graphify = buildGraphify(rootDir)
   const graphifyMd = generateGraphifyReport(graphify)
-  writeFileSync(join(outDir, 'GRAPH_REPORT.md'), graphifyMd)
+  writeFileSync(join(graphifyDir, 'GRAPH_REPORT.md'), graphifyMd)
 
   return { graphify: graphifyMd, codegraph: codegraphMd }
 }

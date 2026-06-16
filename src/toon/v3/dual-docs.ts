@@ -73,8 +73,11 @@ export function getToonPath(originalPath: string): string {
   if (originalPath.startsWith('docs/')) {
     return `.toon/docs/${originalPath.replace(/\.md$/, '.toon')}`
   }
-  if (originalPath.startsWith('graphify-out/')) {
-    return `.toon/graphs/${originalPath.replace(/\.md$/, '.toon').replace(/\.json$/, '.json')}`
+  if (originalPath.startsWith('.toon/graphify/')) {
+    return `.toon/graphify/${originalPath.replace(/\.md$/, '.toon').replace(/\.json$/, '.json')}`
+  }
+  if (originalPath.startsWith('.toon/codegraph/')) {
+    return `.toon/codegraph/${originalPath.replace(/\.md$/, '.toon')}`
   }
   if (originalPath === 'CLAUDE.md') {
     return '.toon/project/CLAUDE.md'
@@ -88,9 +91,10 @@ export function getToonPath(originalPath: string): string {
 export function getHumanPath(toonPath: string): string {
   return toonPath
     .replace(/^\.toon\/docs\//, 'docs/')
-    .replace(/^\.toon\/memory\/agent-department\//, 'agent-department/')
+    .replace(/^\.toon\/agents\//, 'agent-department/')
     .replace(/^\.toon\/memory\/agent-memory\//, 'agent-memory/')
-    .replace(/^\.toon\/graphs\//, 'graphify-out/')
+    .replace(/^\.toon\/graphify\//, '.toon/graphify/')
+    .replace(/^\.toon\/codegraph\//, '.toon/codegraph/')
     .replace(/^\.toon\/project\//, '')
     .replace(/\.toon$/, '.md')
 }
@@ -172,10 +176,11 @@ export function docStats(projectRoot: string = process.cwd()): DualDocStats {
     stats.totalToonSize += toonSize
   }
 
-  countDir('.toon/memory/agent-department', 'agent-department', 'agentMemory')
+  countDir('.toon/agents', 'agent-department', 'agentMemory')
   countDir('.toon/memory/agent-memory', 'agent-memory', 'agentMemory')
   countDir('.toon/docs', 'docs', 'docs')
-  countDir('.toon/graphs', 'graphify-out', 'graphs')
+  countDir('.toon/graphify', '.toon/graphify', 'graphs')
+  countDir('.toon/codegraph', '.toon/codegraph', 'graphs')
 
   // Project configs
   const projectToon = join(projectRoot, '.toon', 'project', 'CLAUDE.md')

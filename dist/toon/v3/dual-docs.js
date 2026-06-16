@@ -64,8 +64,11 @@ function getToonPath(originalPath) {
     if (originalPath.startsWith('docs/')) {
         return `.toon/docs/${originalPath.replace(/\.md$/, '.toon')}`;
     }
-    if (originalPath.startsWith('graphify-out/')) {
-        return `.toon/graphs/${originalPath.replace(/\.md$/, '.toon').replace(/\.json$/, '.json')}`;
+    if (originalPath.startsWith('.toon/graphify/')) {
+        return `.toon/graphify/${originalPath.replace(/\.md$/, '.toon').replace(/\.json$/, '.json')}`;
+    }
+    if (originalPath.startsWith('.toon/codegraph/')) {
+        return `.toon/codegraph/${originalPath.replace(/\.md$/, '.toon')}`;
     }
     if (originalPath === 'CLAUDE.md') {
         return '.toon/project/CLAUDE.md';
@@ -78,9 +81,10 @@ function getToonPath(originalPath) {
 function getHumanPath(toonPath) {
     return toonPath
         .replace(/^\.toon\/docs\//, 'docs/')
-        .replace(/^\.toon\/memory\/agent-department\//, 'agent-department/')
+        .replace(/^\.toon\/agents\//, 'agent-department/')
         .replace(/^\.toon\/memory\/agent-memory\//, 'agent-memory/')
-        .replace(/^\.toon\/graphs\//, 'graphify-out/')
+        .replace(/^\.toon\/graphify\//, '.toon/graphify/')
+        .replace(/^\.toon\/codegraph\//, '.toon/codegraph/')
         .replace(/^\.toon\/project\//, '')
         .replace(/\.toon$/, '.md');
 }
@@ -156,10 +160,11 @@ function docStats(projectRoot = process.cwd()) {
         stats.totalHumanSize += humanSize;
         stats.totalToonSize += toonSize;
     }
-    countDir('.toon/memory/agent-department', 'agent-department', 'agentMemory');
+    countDir('.toon/agents', 'agent-department', 'agentMemory');
     countDir('.toon/memory/agent-memory', 'agent-memory', 'agentMemory');
     countDir('.toon/docs', 'docs', 'docs');
-    countDir('.toon/graphs', 'graphify-out', 'graphs');
+    countDir('.toon/graphify', '.toon/graphify', 'graphs');
+    countDir('.toon/codegraph', '.toon/codegraph', 'graphs');
     // Project configs
     const projectToon = (0, path_1.join)(projectRoot, '.toon', 'project', 'CLAUDE.md');
     const projectOrig = (0, path_1.join)(projectRoot, 'CLAUDE.md');

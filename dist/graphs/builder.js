@@ -13,7 +13,7 @@ function scanFiles(dir, pattern) {
     try {
         for (const entry of (0, fs_1.readdirSync)(dir)) {
             if (entry === 'node_modules' || entry === '.git' || entry === 'dist' ||
-                entry === '.next' || entry === '__pycache__' || entry === 'graphify-out')
+                entry === '.next' || entry === '__pycache__' || entry === '.toon')
                 continue;
             const full = (0, path_1.join)(dir, entry);
             try {
@@ -247,14 +247,16 @@ function generateGraphifyReport(report) {
 }
 // ─── Public API ───────────────────────────────────────────────────────────────
 function buildAllGraphs(rootDir) {
-    const outDir = (0, path_1.join)(rootDir, 'graphify-out');
-    (0, fs_1.mkdirSync)(outDir, { recursive: true });
+    const graphifyDir = (0, path_1.join)(rootDir, '.toon', 'graphify');
+    const codegraphDir = (0, path_1.join)(rootDir, '.toon', 'codegraph');
+    (0, fs_1.mkdirSync)(graphifyDir, { recursive: true });
+    (0, fs_1.mkdirSync)(codegraphDir, { recursive: true });
     const codegraph = buildCodegraph(rootDir);
     const codegraphMd = generateCodegraphReport(codegraph);
-    (0, fs_1.writeFileSync)((0, path_1.join)(outDir, 'CODEGRAPH_REPORT.md'), codegraphMd);
+    (0, fs_1.writeFileSync)((0, path_1.join)(codegraphDir, 'CODEGRAPH_REPORT.md'), codegraphMd);
     const graphify = buildGraphify(rootDir);
     const graphifyMd = generateGraphifyReport(graphify);
-    (0, fs_1.writeFileSync)((0, path_1.join)(outDir, 'GRAPH_REPORT.md'), graphifyMd);
+    (0, fs_1.writeFileSync)((0, path_1.join)(graphifyDir, 'GRAPH_REPORT.md'), graphifyMd);
     return { graphify: graphifyMd, codegraph: codegraphMd };
 }
 function getGraphStats(rootDir) {

@@ -22,10 +22,11 @@ const fs_1 = require("fs");
 const path_1 = require("path");
 // ─── Path Mapping ─────────────────────────────────────────────────────────────
 const PATH_MAP = {
-    'agent-department': { toon: '.toon/memory/agent-department', archive: '.toon/.archive' },
+    'agent-department': { toon: '.toon/agents', archive: '.toon/.archive' },
     'agent-memory': { toon: '.toon/memory/agent-memory', archive: '.toon/.archive' },
     'docs': { toon: '.toon/docs', archive: '.toon/.archive' },
-    'graphify-out': { toon: '.toon/graphs', archive: '.toon/.archive' },
+    '.toon/graphify': { toon: '.toon/graphify', archive: '.toon/.archive' },
+    '.toon/codegraph': { toon: '.toon/codegraph', archive: '.toon/.archive' },
     'CLAUDE.md': { toon: '.toon/project/CLAUDE.md', archive: '.toon/.archive' },
 };
 // ─── Cache ────────────────────────────────────────────────────────────────────

@@ -199,32 +199,25 @@ function generateGraphifyMd(report) {
 }
 
 function buildAllGraphs(rootDir) {
-  // Output to .toon/graphs/ — canonical location
-  const outDir = path.join(rootDir, '.toon', 'graphs')
-  fs.mkdirSync(outDir, { recursive: true })
-
-  // Also maintain legacy graphify-out/ for backward compat
-  const legacyDir = path.join(rootDir, 'graphify-out')
-  fs.mkdirSync(legacyDir, { recursive: true })
+  // Output to .toon/graphify/ + .toon/codegraph/ — separate structured folders
+  const graphifyDir = path.join(rootDir, '.toon', 'graphify')
+  const codegraphDir = path.join(rootDir, '.toon', 'codegraph')
+  fs.mkdirSync(graphifyDir, { recursive: true })
+  fs.mkdirSync(codegraphDir, { recursive: true })
 
   const codegraph = buildCodegraph(rootDir)
   const codegraphMd = generateCodegraphMd(codegraph)
   const codegraphToon = mdToToon(codegraphMd)
   
-  // Write .toon version (primary — what agents read)
-  fs.writeFileSync(path.join(outDir, 'CODEGRAPH_REPORT.toon'), codegraphToon)
-  // Write .md version (human-readable)
-  fs.writeFileSync(path.join(outDir, 'CODEGRAPH_REPORT.md'), codegraphMd)
-  // Legacy link
-  fs.writeFileSync(path.join(legacyDir, 'CODEGRAPH_REPORT.md'), codegraphMd)
+  fs.writeFileSync(path.join(codegraphDir, 'CODEGRAPH_REPORT.toon'), codegraphToon)
+  fs.writeFileSync(path.join(codegraphDir, 'CODEGRAPH_REPORT.md'), codegraphMd)
 
   const graphify = buildGraphify(rootDir)
   const graphifyMd = generateGraphifyMd(graphify)
   const graphifyToon = mdToToon(graphifyMd)
   
-  fs.writeFileSync(path.join(outDir, 'GRAPH_REPORT.toon'), graphifyToon)
-  fs.writeFileSync(path.join(outDir, 'GRAPH_REPORT.md'), graphifyMd)
-  fs.writeFileSync(path.join(legacyDir, 'GRAPH_REPORT.md'), graphifyMd)
+  fs.writeFileSync(path.join(graphifyDir, 'GRAPH_REPORT.toon'), graphifyToon)
+  fs.writeFileSync(path.join(graphifyDir, 'GRAPH_REPORT.md'), graphifyMd)
 
   // Auto-detect and fix issues
   const issues = detectGraphIssues(codegraph, graphify, rootDir)
@@ -340,8 +333,8 @@ ToonGine CLI v1.5.4
   toongine init          One command to activate everything (creates .toon/ structure)
   toongine integrate     Wire engine into an existing project (safe, non-destructive)
   toongine doctor        Health check (all ✅ except external services)
-  toongine graph         Rebuild knowledge graphs → .toon/graphs/
-  toongine agents        List all agents from .toon/memory/agent-department/
+  toongine graph         Rebuild knowledge graphs → .toon/graphify/ + .toon/codegraph/
+  toongine agents        List all agents from .toon/agents/
   toongine dashboard     Open live dashboard (port 4200)
   toongine dashboard --hide / --show / --status
   toongine absorb        Migrate originals → .toon/ (safe, with rollback)
@@ -350,6 +343,7 @@ ToonGine CLI v1.5.4
   toongine rollback <ts> Restore from specific snapshot
   toongine sync --once   One-time sync: originals → .toon/
   toongine sync --watch  Auto-sync every 30s
+  toongine hermes        Hermes bridge: connect / disconnect / status
   toongine compile       Phase 1: text compression (28%) + Phase 2: V3 runtime (94%)
   toongine compile --force   Force recompile all (bypass hash cache)
   toongine compile --file <path>  Compile single file + rebuild engine
@@ -363,7 +357,7 @@ Project structure (after init):
   ├── dictionary.toon        ← project abbreviation dictionary
   ├── graphs/                ← CODEGRAPH_REPORT.{md,toon} + GRAPH_REPORT.{md,toon}
   ├── memory/
-  │   └── agent-department/  ← 24 agents across 8 departments
+  │   ├── agents/           ← 24 agents across 8 departments
   ├── docs/                  ← compiled venture docs, plans, constitution
   ├── project/               ← compiled CLAUDE.md
   ├── schemas/               ← schema definitions
@@ -381,9 +375,9 @@ function init() {
     hermes: fs.existsSync(path.join(os.homedir(), '.hermes', 'memories', 'USER.md')),
     claude: !!process.env.ANTHROPIC_API_KEY,
     nextjs: fs.existsSync(path.join(cwd, 'next.config.ts')) || fs.existsSync(path.join(cwd, 'next.config.js')),
-    graphify: fs.existsSync(path.join(cwd, '.toon', 'graphs', 'GRAPH_REPORT.md')),
-    codegraph: fs.existsSync(path.join(cwd, '.toon', 'graphs', 'CODEGRAPH_REPORT.md')),
-    agentMemory: fs.existsSync(path.join(cwd, '.toon', 'memory', 'agent-department')),
+    graphify: fs.existsSync(path.join(cwd, '.toon', 'graphify', 'GRAPH_REPORT.md')),
+    codegraph: fs.existsSync(path.join(cwd, '.toon', 'codegraph', 'CODEGRAPH_REPORT.md')),
+    agentMemory: fs.existsSync(path.join(cwd, '.toon', 'agents')),
     claudeMd: fs.existsSync(path.join(cwd, 'CLAUDE.md')),
     codeReviewGraph: checkCodeReviewGraph(),
   }
@@ -415,8 +409,9 @@ function init() {
   const items = [
     ['.toon/dictionary.toon', '# TOON Dictionary\n> Project-specific abbreviations — rebuild: npx toongine compile\n'],
     ['.toon/project/.gitkeep', ''],
-    ['.toon/graphs/.gitkeep', ''],
-    ['.toon/memory/agent-department/.gitkeep', ''],
+    ['.toon/codegraph/.gitkeep', ''],
+    ['.toon/graphify/.gitkeep', ''],
+    ['.toon/agents/.gitkeep', ''],
     ['.toon/docs/ventures/.gitkeep', ''],
     ['.toon/v3/.gitkeep', ''],
   ]
@@ -443,11 +438,11 @@ function init() {
     console.log('  ✅ CLAUDE.md (exists)')
   }
 
-  // ─── Deploy agents to .toon/memory/agent-department/ ────────────────────
+  // ─── Deploy agents to .toon/agents/ ─────────────────────────────────────
   console.log('\n  👥 Deploying agents...\n')
 
   const templateDir = path.join(__dirname, '..', 'templates', 'agents')
-  const agentDir = path.join(cwd, '.toon', 'memory', 'agent-department')
+  const agentDir = path.join(cwd, '.toon', 'agents')
   let agentsCreated = 0
 
   if (fs.existsSync(templateDir)) {
@@ -470,21 +465,21 @@ function init() {
       }
     }
 
-    // Copy DEPARTMENTS.md to agent-department root
+    // Copy DEPARTMENTS.md to agents root
     const depsSrc = path.join(templateDir, 'DEPARTMENTS.md')
     if (fs.existsSync(depsSrc)) {
       fs.copyFileSync(depsSrc, path.join(agentDir, 'DEPARTMENTS.md'))
     }
   }
-  console.log(`  ✅ ${agentsCreated} new agents deployed to .toon/memory/agent-department/`)
+  console.log(`  ✅ ${agentsCreated} new agents deployed to .toon/agents/`)
 
-  // ─── Build knowledge graphs → .toon/graphs/ ────────────────────────────
+  // ─── Build knowledge graphs → .toon/graphify/ + .toon/codegraph/ ──────
   console.log('\n  🧠 Building knowledge graphs...\n')
 
   try {
     const result = buildAllGraphs(cwd)
-    console.log(`  ✅ Codegraph: ${(result.codegraph.length / 1024).toFixed(1)} KB → .toon/graphs/`)
-    console.log(`  ✅ Graphify: ${(result.graphify.length / 1024).toFixed(1)} KB → .toon/graphs/`)
+    console.log(`  ✅ Codegraph: ${(result.codegraph.length / 1024).toFixed(1)} KB → .toon/codegraph/`)
+    console.log(`  ✅ Graphify: ${(result.graphify.length / 1024).toFixed(1)} KB → .toon/graphify/`)
   } catch (e) {
     console.log(`  ⚠️  Graphs not built: ${e.message}`)
   }
@@ -517,8 +512,8 @@ function init() {
   console.log('  ✅ ToonGine activated!')
   console.log('  ──────────────────────────────────────────────\n')
   console.log(`  📁 .toon/ structure created`)
-  console.log(`  🧠 Knowledge graphs → .toon/graphs/`)
-  console.log(`  👥 Agents → .toon/memory/agent-department/`)
+  console.log(`  🧠 Knowledge graphs → .toon/graphify/ + .toon/codegraph/`)
+  console.log(`  👥 Agents → .toon/agents/`)
   console.log(`  🔗 Hermes: ${features.hermes ? '✅ Connected' : '⚠️  Install Hermes Agent'}`)
   console.log(`  🤖 Claude: ${features.claude ? '✅ ANTHROPIC_API_KEY set' : '⚠️  Set ANTHROPIC_API_KEY in .env'}`)
   console.log(`  🔬 Code-Review-Graph: ${features.codeReviewGraph ? '✅ Tree-sitter engine' : '⚠️  Using built-in regex engine'}`)
@@ -546,13 +541,13 @@ function doctor() {
     hasCodeReviewGraph = !!require('child_process').execSync('which code-review-graph', { encoding: 'utf-8', timeout: 5000 }).trim()
   } catch {}
 
-  // Count agents properly — go 3 levels deep in agent-department/
-  const agentDir = cfg.agentMemoryDir || path.join(cwd, '.toon', 'memory')
+  // Count agents from .toon/agents/
+  const agentDir = cfg.agentMemoryDir || path.join(cwd, '.toon', 'agents')
   const agentCount = countAgentsDeep(agentDir)
   
   const checks = [
-    ['Graphify (built-in)', fs.existsSync(cfg.graphifyReport || path.join(cwd, '.toon', 'graphs', 'GRAPH_REPORT.md')), '✅ Built-in engine'],
-    ['Codegraph (built-in)', fs.existsSync(cfg.codegraphReport || path.join(cwd, '.toon', 'graphs', 'CODEGRAPH_REPORT.md')), '✅ Built-in engine'],
+    ['Graphify (built-in)', fs.existsSync(cfg.graphifyReport || path.join(cwd, '.toon', 'graphify', 'GRAPH_REPORT.md')), '✅ Built-in engine'],
+    ['Codegraph (built-in)', fs.existsSync(cfg.codegraphReport || path.join(cwd, '.toon', 'codegraph', 'CODEGRAPH_REPORT.md')), '✅ Built-in engine'],
     ['Agent Memory', fs.existsSync(agentDir), `${agentCount} agents`],
     ['CLAUDE.md', fs.existsSync(cfg.projectClaudePath || path.join(cwd, 'CLAUDE.md')), '✅'],
     ['Venture Docs', fs.existsSync(cfg.ventureDocsDir || path.join(cwd, 'docs', 'ventures')), '✅'],
@@ -577,14 +572,13 @@ function doctor() {
   console.log('  External services: Hermes (optional) · Claude (set API key)')
 }
 
-// Count actual agent directories (3 levels deep: memory/agent-department/CEO/marcus)
+// Count actual agent directories (3 levels deep: agents/CEO/marcus)
 function countAgentsDeep(dir) {
   if (!fs.existsSync(dir)) return '0'
-  const agentDept = path.join(dir, 'agent-department')
-  if (!fs.existsSync(agentDept)) return '0'
+  // Now dir = .toon/agents directly (departments at level 1)
   let c = 0
-  for (const dept of fs.readdirSync(agentDept)) {
-    const deptPath = path.join(agentDept, dept)
+  for (const dept of fs.readdirSync(dir)) {
+    const deptPath = path.join(dir, dept)
     if (fs.statSync(deptPath).isDirectory()) {
       for (const agent of fs.readdirSync(deptPath)) {
         if (fs.statSync(path.join(deptPath, agent)).isDirectory()) c++
@@ -599,8 +593,8 @@ function graph() {
   const cwd = process.cwd()
   try {
     const result = buildAllGraphs(cwd)
-    console.log(`  ✅ Graphify: ${(result.graphify.length / 1024).toFixed(1)} KB → .toon/graphs/GRAPH_REPORT.{md,toon}`)
-    console.log(`  ✅ Codegraph: ${(result.codegraph.length / 1024).toFixed(1)} KB → .toon/graphs/CODEGRAPH_REPORT.{md,toon}`)
+    console.log(`  ✅ Graphify: ${(result.graphify.length / 1024).toFixed(1)} KB → .toon/graphify/`)
+    console.log(`  ✅ Codegraph: ${(result.codegraph.length / 1024).toFixed(1)} KB → .toon/codegraph/`)
   } catch (e) {
     console.log(`  ❌ Failed: ${e.message}`)
     console.log('  Run: npx toongine init first')
@@ -660,7 +654,7 @@ function agents() {
   }
 
   console.log('\n  👥 YVON Agents\n')
-  const memDir = path.join(cwd, '.toon', 'memory', 'agent-department')
+  const memDir = path.join(cwd, '.toon', 'agents')
   if (!fs.existsSync(memDir)) { 
     // Fallback to legacy path
     const legacyDir = path.join(cwd, 'agent-memory')
@@ -1027,7 +1021,7 @@ function rebuildEngine(cwd) {
 function watch() {
   const cwd = process.cwd()
   console.log('\n  👁️  TOON Watcher — Auto-compiling on changes...\n')
-  console.log('  Watching: .toon/memory/agent-department/**, docs/**, CLAUDE.md')
+  console.log('  Watching: .toon/agents/**, .toon/graphify/**, .toon/codegraph/**, docs/**, CLAUDE.md')
   console.log('  Press Ctrl+C to stop\n')
   
   try {
@@ -1036,7 +1030,9 @@ function watch() {
     const { buildDictionary } = require('../dist/toon/dictionary-builder')
     
     const dirs = [
-      path.join(cwd, '.toon', 'memory', 'agent-department'),
+      path.join(cwd, '.toon', 'agents'),
+      path.join(cwd, '.toon', 'graphify'),
+      path.join(cwd, '.toon', 'codegraph'),
       path.join(cwd, 'docs'),
     ]
     
@@ -1085,7 +1081,67 @@ function watch() {
   } catch(e) { console.log(`  ❌ ${e.message}\n`) }
 }
 
-const cmds = { init, doctor, graph, agents, dashboard, integrate, absorb, rollback, sync, clean, stats, version, compile, watch }
+// ── Hermes Integration ──────────────────────────────────────────────────────
+function hermes() {
+  const sub = process.argv[3] || 'status'
+  const cwd = process.cwd()
+  const configPath = path.join(cwd, '.toon', 'hermes', 'config.json')
+  const hermesHome = path.join(os.homedir(), '.hermes')
+  const hasHermes = fs.existsSync(path.join(hermesHome, 'memories', 'USER.md'))
+
+  if (!fs.existsSync(configPath)) {
+    console.log('\n  ⚠️  .toon/hermes/ not initialized. Run: npx toongine init\n')
+    return
+  }
+
+  const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+
+  switch (sub) {
+    case 'connect': {
+      if (!hasHermes) {
+        console.log('\n  ❌ Hermes Agent not found at ~/.hermes/')
+        console.log('  Install: pip install hermes-agent && hermes setup\n')
+        return
+      }
+      cfg.connected = true
+      cfg.hermesHome = hermesHome
+      cfg.bridge.enabled = true
+      cfg.bridge.direction = 'bidirectional'
+      cfg.lastSync = new Date().toISOString()
+      fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2))
+      console.log('\n  🔗 Hermes connected!')
+      console.log(`  📂 ${hermesHome}`)
+      console.log('  ↔️  Bidirectional sync: memories, skills, sessions')
+      console.log('\n  Run `toongine sync` to pull Hermes data into .toon/\n')
+      break
+    }
+    case 'disconnect': {
+      cfg.connected = false
+      cfg.bridge.enabled = false
+      fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2))
+      console.log('\n  ✂️  Hermes disconnected.')
+      console.log('  .toon/ data preserved. Run `toongine hermes connect` to reconnect.\n')
+      break
+    }
+    case 'status': {
+      console.log('\n  🔗 Hermes Bridge Status\n')
+      console.log(`  Connected:    ${cfg.connected ? '✅ Yes' : '❌ No'}`)
+      console.log(`  Hermes Home:  ${cfg.hermesHome}`)
+      console.log(`  Bridge:       ${cfg.bridge.enabled ? '✅ Enabled' : '⏸️  Disabled'} (${cfg.bridge.direction})`)
+      console.log(`  Last Sync:    ${cfg.lastSync || '—'}`)
+      console.log(`  Hermes Agent: ${hasHermes ? '✅ Installed at ~/.hermes/' : '⚠️  Not found'}`)
+      console.log('\n  Commands:')
+      console.log('    toongine hermes connect     — connect to existing Hermes')
+      console.log('    toongine hermes disconnect  — disconnect')
+      console.log('    toongine hermes status      — this view\n')
+      break
+    }
+    default:
+      console.log('\n  Usage: toongine hermes [connect|disconnect|status]\n')
+  }
+}
+
+const cmds = { init, doctor, graph, agents, dashboard, integrate, absorb, rollback, sync, clean, stats, version, compile, watch, hermes }
 ;(cmds[command] || help)()
 
 // ── absorb ──────────────────────────────────────────────────────────────────

@@ -25,7 +25,8 @@ const TOONABLE_PREFIXES = [
     'agent-department/',
     'agent-memory/',
     'docs/',
-    'graphify-out/',
+    '.toon/graphify/',
+    '.toon/codegraph/',
     'CLAUDE.md',
 ];
 function isToonable(path) {
@@ -114,7 +115,7 @@ function writeMany(files, target = 'both', projectRoot) {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getToonPath(relativePath, root) {
     if (relativePath.startsWith('agent-department/')) {
-        return (0, path_1.join)(root, '.toon', 'memory', toToonFilename(relativePath));
+        return (0, path_1.join)(root, '.toon', 'agents', toToonFilename(relativePath));
     }
     if (relativePath.startsWith('agent-memory/')) {
         return (0, path_1.join)(root, '.toon', 'memory', toToonFilename(relativePath));
@@ -122,7 +123,7 @@ function getToonPath(relativePath, root) {
     if (relativePath.startsWith('docs/')) {
         return (0, path_1.join)(root, '.toon', 'docs', toToonFilename(relativePath));
     }
-    if (relativePath.startsWith('graphify-out/')) {
+    if (relativePath.startsWith('.toon/graphs/')) {
         return (0, path_1.join)(root, '.toon', 'graphs', toToonFilename(relativePath));
     }
     if (relativePath === 'CLAUDE.md') {

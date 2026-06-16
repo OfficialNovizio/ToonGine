@@ -25,8 +25,11 @@ function compile(options) {
         ...collectFiles((0, path_1.join)(root, 'agent-department'), '.md').filter(f => f.includes('MEMORY') || f.includes('AGENT')),
         ...collectFiles((0, path_1.join)(root, 'agent-memory'), '.md').filter(f => f.includes('MEMORY') || f.includes('AGENT')),
     ];
-    const graphs = collectFiles((0, path_1.join)(root, 'graphify-out'), '.md');
-    const graphJson = collectFiles((0, path_1.join)(root, 'graphify-out'), '.json');
+    const graphsMd = collectFiles((0, path_1.join)(root, '.toon', 'graphify'), '.md');
+    const graphsToon = collectFiles((0, path_1.join)(root, '.toon', 'graphify'), '.toon');
+    const graphsJson = collectFiles((0, path_1.join)(root, '.toon', 'graphify'), '.json');
+    const codegraphMd = collectFiles((0, path_1.join)(root, '.toon', 'codegraph'), '.md');
+    const codegraphToon = collectFiles((0, path_1.join)(root, '.toon', 'codegraph'), '.toon');
     const claudeMd = (0, fs_1.existsSync)((0, path_1.join)(root, 'CLAUDE.md')) ? [(0, path_1.join)(root, 'CLAUDE.md')] : [];
     const supabaseMigrations = collectFiles((0, path_1.join)(root, 'supabase'), '.sql');
     const scriptsDir = collectFiles((0, path_1.join)(root, 'scripts'), '.mjs');
@@ -45,12 +48,13 @@ function compile(options) {
     // Also scan .toon/ directories if originals absorbed
     const toonDocs = collectFiles((0, path_1.join)(root, '.toon', 'docs'), '.toon');
     const toonMemory = collectFiles((0, path_1.join)(root, '.toon', 'memory'), '.toon');
-    const toonGraphs = collectFiles((0, path_1.join)(root, '.toon', 'graphs'), '.toon');
+    const toonGraphs = collectFiles((0, path_1.join)(root, '.toon', 'graphify'), '.toon');
+    const toonCodegraph = collectFiles((0, path_1.join)(root, '.toon', 'codegraph'), '.toon');
     const toonProject = (0, fs_1.existsSync)((0, path_1.join)(root, '.toon', 'project', 'CLAUDE.md')) ? [(0, path_1.join)(root, '.toon', 'project', 'CLAUDE.md')] : [];
     const allFiles = [
-        ...docs, ...mems, ...graphs, ...graphJson, ...claudeMd,
+        ...docs, ...mems, ...graphsMd, ...graphsToon, ...graphsJson, ...codegraphMd, ...codegraphToon, ...claudeMd,
         ...supabaseMigrations, ...scriptsDir, ...envTemplate,
-        ...toonDocs, ...toonMemory, ...toonGraphs, ...toonProject,
+        ...toonDocs, ...toonMemory, ...toonGraphs, ...toonCodegraph, ...toonProject,
         ...hermesMemories, ...hermesSkills, ...hermesSessions,
     ];
     // 2. Strip + chunk all files

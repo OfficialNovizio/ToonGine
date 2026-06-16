@@ -39,8 +39,8 @@ function getConfig() {
     }
     return {
         projectRoot: root,
-        graphifyReport: fileConfig.graphifyReport ?? (0, path_1.join)(root, 'graphify-out', 'GRAPH_REPORT.md'),
-        codegraphReport: fileConfig.codegraphReport ?? (0, path_1.join)(root, 'graphify-out', 'CODEGRAPH_REPORT.md'),
+        graphifyReport: fileConfig.graphifyReport ?? (0, path_1.join)(root, '.toon', 'graphify', 'GRAPH_REPORT.md'),
+        codegraphReport: fileConfig.codegraphReport ?? (0, path_1.join)(root, '.toon', 'codegraph', 'CODEGRAPH_REPORT.md'),
         agentMemoryDir: fileConfig.agentMemoryDir ?? (0, path_1.join)(root, 'agent-memory'),
         hermesMemoryDir: fileConfig.hermesMemoryDir ?? (0, path_1.join)((0, os_1.homedir)(), '.hermes', 'memories'),
         projectClaudePath: fileConfig.projectClaudePath ?? (0, path_1.join)(root, 'CLAUDE.md'),
