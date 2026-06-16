@@ -7,6 +7,7 @@ export interface CompileResult {
     durationMs: number;
     sections: number;
     abbreviationsApplied: number;
+    skipped?: boolean;
     error?: string;
 }
 export interface CompileAllResult {

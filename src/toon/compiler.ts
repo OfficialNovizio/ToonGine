@@ -68,6 +68,7 @@ export interface CompileResult {
   durationMs: number
   sections: number
   abbreviationsApplied: number
+  skipped?: boolean
   error?: string
 }
 
@@ -449,7 +450,8 @@ export function compileFile(sourcePath: string, projectRoot: string, dict?: Reco
       durationMs: Date.now() - start,
       sections: 0,
       abbreviationsApplied: 0,
-      error: 'SKIPPED: foundation file (hand-crafted TOON)',
+      skipped: true,
+      error: undefined,
     }
   }
 
@@ -598,8 +600,9 @@ export function compileAllIncremental(projectRoot: string, dict?: Record<string,
   saveCache(projectRoot, cache)
 
   const duration = Date.now() - start
-  const compiled = results.filter(r => !r.error)
-  const errors = results.filter(r => r.error)
+  const compiled = results.filter(r => !r.error && !r.skipped)
+  const errors = results.filter(r => r.error && !r.skipped)
+  const skipped_foundation = results.filter(r => r.skipped)
 
   return {
     totalFiles: allFiles.length,

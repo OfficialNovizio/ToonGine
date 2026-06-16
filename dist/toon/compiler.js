@@ -415,7 +415,8 @@ function compileFile(sourcePath, projectRoot, dict) {
             durationMs: Date.now() - start,
             sections: 0,
             abbreviationsApplied: 0,
-            error: 'SKIPPED: foundation file (hand-crafted TOON)',
+            skipped: true,
+            error: undefined,
         };
     }
     try {
@@ -552,8 +553,9 @@ function compileAllIncremental(projectRoot, dict, force = false) {
     cache.lastFullCompile = new Date().toISOString();
     saveCache(projectRoot, cache);
     const duration = Date.now() - start;
-    const compiled = results.filter(r => !r.error);
-    const errors = results.filter(r => r.error);
+    const compiled = results.filter(r => !r.error && !r.skipped);
+    const errors = results.filter(r => r.error && !r.skipped);
+    const skipped_foundation = results.filter(r => r.skipped);
     return {
         totalFiles: allFiles.length,
         compiled: compiled.length,
