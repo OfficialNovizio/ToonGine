@@ -335,13 +335,13 @@ function autoFixIssues(issues, rootDir) {
 
 function help() {
   console.log(`
-ToonGine CLI v1.5.0
+ToonGine CLI v1.5.4
 
-  toongine init          One command to activate everything (new projects)
+  toongine init          One command to activate everything (creates .toon/ structure)
   toongine integrate     Wire engine into an existing project (safe, non-destructive)
   toongine doctor        Health check (all ✅ except external services)
-  toongine graph         Rebuild knowledge graphs → absorb into .toon/graphs/
-  toongine agents        List all 13 agents
+  toongine graph         Rebuild knowledge graphs → .toon/graphs/
+  toongine agents        List all agents from .toon/memory/agent-department/
   toongine dashboard     Open live dashboard (port 4200)
   toongine dashboard --hide / --show / --status
   toongine absorb        Migrate originals → .toon/ (safe, with rollback)
@@ -350,27 +350,39 @@ ToonGine CLI v1.5.0
   toongine rollback <ts> Restore from specific snapshot
   toongine sync --once   One-time sync: originals → .toon/
   toongine sync --watch  Auto-sync every 30s
-  toongine compile       Compile all .md → .toon (new compiler)
+  toongine compile       Phase 1: text compression (28%) + Phase 2: V3 runtime check (94%)
   toongine compile --file <path>  Compile single file
   toongine watch         Auto-compile on file changes (dev mode)
   toongine clean         Remove stale duplicates + reindex engine.bin
-  toongine stats         Show dual-doc compression stats
+  toongine stats         Show dual-doc stats + runtime savings
   toongine version       Show version
+
+Project structure (after init):
+  .toon/
+  ├── dictionary.toon        ← project abbreviation dictionary
+  ├── graphs/                ← CODEGRAPH_REPORT.{md,toon} + GRAPH_REPORT.{md,toon}
+  ├── memory/
+  │   └── agent-department/  ← 24 agents across 8 departments
+  ├── docs/                  ← compiled venture docs, plans, constitution
+  ├── project/               ← compiled CLAUDE.md
+  ├── schemas/               ← schema definitions
+  └── v3/
+      └── engine.bin         ← 12MB binary index (runtime 94% savings)
 `)
 }
 
 function init() {
   const cwd = process.cwd()
-  console.log('\n  🚀 ToonGine v1.3.0 — Activating...\n')
+  console.log('\n  🚀 ToonGine v1.5.4 — Activating...\n')
 
   // ─── Detect features ─────────────────────────────────────────────────────
   const features = {
     hermes: fs.existsSync(path.join(os.homedir(), '.hermes', 'memories', 'USER.md')),
     claude: !!process.env.ANTHROPIC_API_KEY,
     nextjs: fs.existsSync(path.join(cwd, 'next.config.ts')) || fs.existsSync(path.join(cwd, 'next.config.js')),
-    graphify: fs.existsSync(path.join(cwd, 'graphify-out', 'GRAPH_REPORT.md')),
-    codegraph: fs.existsSync(path.join(cwd, 'graphify-out', 'CODEGRAPH_REPORT.md')),
-    agentMemory: fs.existsSync(path.join(cwd, 'agent-memory')),
+    graphify: fs.existsSync(path.join(cwd, '.toon', 'graphs', 'GRAPH_REPORT.md')),
+    codegraph: fs.existsSync(path.join(cwd, '.toon', 'graphs', 'CODEGRAPH_REPORT.md')),
+    agentMemory: fs.existsSync(path.join(cwd, '.toon', 'memory', 'agent-department')),
     claudeMd: fs.existsSync(path.join(cwd, 'CLAUDE.md')),
     codeReviewGraph: checkCodeReviewGraph(),
   }
@@ -392,20 +404,23 @@ function init() {
         require('child_process').execSync('code-review-graph build 2>/dev/null', { timeout: 30000, cwd: cwd })
         features.codeReviewGraph = true
       }
-    } catch (e) {
-      // Silent fallback — built-in regex graph builder handles it
-    }
+    } catch (e) {}
   }
 
-  // ─── Create project structure ────────────────────────────────────────────
+  // ─── Create .toon/ project structure ────────────────────────────────────
+  const toonDir = path.join(cwd, '.toon')
+  fs.mkdirSync(toonDir, { recursive: true })
+
   const items = [
-    ['CLAUDE.md', '# CLAUDE.md\n> Project architecture and rules\n\n## App Architecture\n\n## Development Commands\n\n## Key Rules\n- Strict TypeScript — zero build errors\n- No manual deploys — CI/CD pipeline only\n'],
-    ['graphify-out/GRAPH_REPORT.md', null],  // built below
-    ['graphify-out/CODEGRAPH_REPORT.md', null],  // built below
-    ['docs/ventures/default/CONTEXT.md', '# Venture Context\n> Default venture configuration\n'],
+    ['.toon/dictionary.toon', '# TOON Dictionary\n> Project-specific abbreviations — rebuild: npx toongine compile\n'],
+    ['.toon/project/.gitkeep', ''],
+    ['.toon/graphs/.gitkeep', ''],
+    ['.toon/memory/agent-department/.gitkeep', ''],
+    ['.toon/docs/ventures/.gitkeep', ''],
+    ['.toon/v3/.gitkeep', ''],
   ]
 
-  console.log('  📁 Building project structure...\n')
+  console.log('  📁 Building .toon/ project structure...\n')
   for (const [file, content] of items) {
     const full = path.join(cwd, file)
     if (fs.existsSync(full)) {
@@ -417,17 +432,27 @@ function init() {
     }
   }
 
-  // ─── Deploy agents ───────────────────────────────────────────────────────
-  console.log('\n  👥 Deploying 13 agents...\n')
+  // ─── Ensure CLAUDE.md exists at root ────────────────────────────────────
+  const claudePath = path.join(cwd, 'CLAUDE.md')
+  if (!fs.existsSync(claudePath)) {
+    const claudeContent = '# CLAUDE.md\n> Project architecture and rules\n> Auto-generated by ToonGine — add your project details here\n\n## App Architecture\n\n## Development Commands\n\n## Key Rules\n- Strict TypeScript — zero build errors\n- No manual deploys — CI/CD pipeline only\n'
+    fs.writeFileSync(claudePath, claudeContent)
+    console.log('  📦 CLAUDE.md (project root)')
+  } else {
+    console.log('  ✅ CLAUDE.md (exists)')
+  }
+
+  // ─── Deploy agents to .toon/memory/agent-department/ ────────────────────
+  console.log('\n  👥 Deploying agents...\n')
 
   const templateDir = path.join(__dirname, '..', 'templates', 'agents')
-  const agentDir = path.join(cwd, 'agent-memory')
+  const agentDir = path.join(cwd, '.toon', 'memory', 'agent-department')
   let agentsCreated = 0
 
   if (fs.existsSync(templateDir)) {
     const depts = fs.readdirSync(templateDir).filter(d => {
       const full = path.join(templateDir, d)
-      return fs.statSync(full).isDirectory() && d !== 'skills' && d !== 'brands'
+      return fs.statSync(full).isDirectory() && d !== 'skills' && d !== 'brands' && d !== 'DEPARTMENTS.md'
     })
 
     for (const dept of depts) {
@@ -444,33 +469,32 @@ function init() {
       }
     }
 
+    // Copy DEPARTMENTS.md to agent-department root
     const depsSrc = path.join(templateDir, 'DEPARTMENTS.md')
     if (fs.existsSync(depsSrc)) {
       fs.copyFileSync(depsSrc, path.join(agentDir, 'DEPARTMENTS.md'))
     }
   }
-  console.log(`  ✅ ${agentsCreated} new agents deployed`)
+  console.log(`  ✅ ${agentsCreated} new agents deployed to .toon/memory/agent-department/`)
 
-  // ─── Build knowledge graphs (built-in, no external deps) ────────────────
+  // ─── Build knowledge graphs → .toon/graphs/ ────────────────────────────
   console.log('\n  🧠 Building knowledge graphs...\n')
 
   try {
     const result = buildAllGraphs(cwd)
-    const codeLen = result.codegraph.length
-    const graphLen = result.graphify.length
-    console.log(`  ✅ Codegraph built (${(codeLen / 1024).toFixed(1)} KB)`)
-    console.log(`  ✅ Graphify built (${(graphLen / 1024).toFixed(1)} KB)`)
+    console.log(`  ✅ Codegraph: ${(result.codegraph.length / 1024).toFixed(1)} KB → .toon/graphs/`)
+    console.log(`  ✅ Graphify: ${(result.graphify.length / 1024).toFixed(1)} KB → .toon/graphs/`)
   } catch (e) {
     console.log(`  ⚠️  Graphs not built: ${e.message}`)
   }
 
   // ─── Write config ────────────────────────────────────────────────────────
   const config = {
-    version: '1.3.0',
+    version: '1.5.4',
     projectRoot: cwd,
-    graphifyReport: path.join(cwd, 'graphify-out', 'GRAPH_REPORT.md'),
-    codegraphReport: path.join(cwd, 'graphify-out', 'CODEGRAPH_REPORT.md'),
-    agentMemoryDir: path.join(cwd, 'agent-memory'),
+    graphifyReport: path.join(cwd, '.toon', 'graphs', 'GRAPH_REPORT.md'),
+    codegraphReport: path.join(cwd, '.toon', 'graphs', 'CODEGRAPH_REPORT.md'),
+    agentMemoryDir: path.join(cwd, '.toon', 'memory'),
     hermesMemoryDir: path.join(os.homedir(), '.hermes', 'memories'),
     projectClaudePath: path.join(cwd, 'CLAUDE.md'),
     ventureDocsDir: path.join(cwd, 'docs', 'ventures'),
@@ -481,7 +505,7 @@ function init() {
     toonBidirectional: true,
     hermesSync: features.hermes,
     claudeAvailable: features.claude,
-    agents: 13,
+    agents: agentsCreated || 13,
     builtIn: ['graphify', 'codegraph', 'code-review-graph'],
     codeReviewGraph: features.codeReviewGraph,
   }
@@ -491,12 +515,15 @@ function init() {
   console.log('\n  ──────────────────────────────────────────────')
   console.log('  ✅ ToonGine activated!')
   console.log('  ──────────────────────────────────────────────\n')
-  console.log('  📊 Knowledge graphs: built (built-in engine)')
-  console.log('  👥 Agents: 13 deployed')
-  console.log(`  🔗 Hermes: ${features.hermes ? '✅ Connected' : '⚠️  Install: curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash'}`)
+  console.log(`  📁 .toon/ structure created`)
+  console.log(`  🧠 Knowledge graphs → .toon/graphs/`)
+  console.log(`  👥 Agents → .toon/memory/agent-department/`)
+  console.log(`  🔗 Hermes: ${features.hermes ? '✅ Connected' : '⚠️  Install Hermes Agent'}`)
   console.log(`  🤖 Claude: ${features.claude ? '✅ ANTHROPIC_API_KEY set' : '⚠️  Set ANTHROPIC_API_KEY in .env'}`)
-  console.log(`  🔬 Code-Review-Graph: ${features.codeReviewGraph ? '✅ Built-in Tree-sitter engine' : '⚠️  pip not available — using built-in regex engine'}`)
-  console.log('\n  Run: npx toongine doctor')
+  console.log(`  🔬 Code-Review-Graph: ${features.codeReviewGraph ? '✅ Tree-sitter engine' : '⚠️  Using built-in regex engine'}`)
+  console.log(`\n  Next: npx toongine doctor   (health check)`)
+  console.log(`        npx toongine compile   (compress everything)`)
+  console.log(`        npx toongine stats     (runtime savings)`)
 }
 
 function doctor() {
@@ -571,9 +598,8 @@ function graph() {
   const cwd = process.cwd()
   try {
     const result = buildAllGraphs(cwd)
-    console.log(`  ✅ Graphify: ${(result.graphify.length / 1024).toFixed(1)} KB`)
-    console.log(`  ✅ Codegraph: ${(result.codegraph.length / 1024).toFixed(1)} KB`)
-    console.log('  📁 Output: graphify-out/')
+    console.log(`  ✅ Graphify: ${(result.graphify.length / 1024).toFixed(1)} KB → .toon/graphs/GRAPH_REPORT.{md,toon}`)
+    console.log(`  ✅ Codegraph: ${(result.codegraph.length / 1024).toFixed(1)} KB → .toon/graphs/CODEGRAPH_REPORT.{md,toon}`)
   } catch (e) {
     console.log(`  ❌ Failed: ${e.message}`)
     console.log('  Run: npx toongine init first')
@@ -633,23 +659,40 @@ function agents() {
   }
 
   console.log('\n  👥 YVON Agents\n')
-  const memDir = path.join(process.cwd(), 'agent-memory')
-  if (!fs.existsSync(memDir)) { console.log('  Run: npx toongine init'); return }
+  const memDir = path.join(cwd, '.toon', 'memory', 'agent-department')
+  if (!fs.existsSync(memDir)) { 
+    // Fallback to legacy path
+    const legacyDir = path.join(cwd, 'agent-memory')
+    if (fs.existsSync(legacyDir)) {
+      console.log('  ⚠️  Agents at legacy path: agent-memory/ — run: npx toongine init')
+      listAgentsFrom(legacyDir)
+      return
+    }
+    console.log('  No agents found. Run: npx toongine init')
+    return 
+  }
+  listAgentsFrom(memDir)
+}
 
-  const deptNames = { CEO: 'Direction', COO: 'Operations', Technical: 'Shipping', Marketing: 'Revenue', Finance: 'Finance', Psychology: 'Validation' }
+function listAgentsFrom(memDir) {
+  const deptNames = { CEO: 'Direction', COO: 'Operations', Command: 'Governance', Technical: 'Shipping', Marketing: 'Revenue', Finance: 'Finance', Legal: 'Legal', Psychology: 'Validation', Research: 'Research', Sense: 'Monitoring' }
+  let total = 0
   for (const dept of fs.readdirSync(memDir)) {
     const dp = path.join(memDir, dept)
-    if (!fs.statSync(dp).isDirectory() || dept === 'skills' || dept === 'brands') continue
+    if (!fs.statSync(dp).isDirectory() || dept === 'skills' || dept === 'brands' || dept.startsWith('.')) continue
+    if (dept === 'DEPARTMENTS.md' || dept === 'DEPARTMENTS.toon') continue
+    const agents = fs.readdirSync(dp).filter(a => fs.statSync(path.join(dp, a)).isDirectory())
     console.log(`  ${dept} — ${deptNames[dept] || ''}`)
-    for (const agent of fs.readdirSync(dp)) {
+    for (const agent of agents) {
       const ap = path.join(dp, agent)
-      if (!fs.statSync(ap).isDirectory()) continue
       const files = fs.readdirSync(ap).filter(f => f.endsWith('.md')).length
       const hasSkills = fs.existsSync(path.join(ap, 'skills'))
       console.log(`    ${agent.padEnd(20)} ${files} docs${hasSkills ? ' + skills/' : ''}`)
+      total++
     }
     console.log('')
   }
+  console.log(`  Total: ${total} agents`)
 }
 
 function integrate() {
@@ -662,21 +705,26 @@ function integrate() {
     process.exit(1)
   }
   
-  // ── Step 1: Check if toongine-engine is installed ────────────────────────────
-  const enginePath = path.join(cwd, 'node_modules', 'toongine-engine')
+  // ── Step 1: Check if toongine is installed ───────────────────────────────
+  const enginePath = path.join(cwd, 'node_modules', 'toongine')
   let engineInstalled = fs.existsSync(enginePath)
   
   if (!engineInstalled) {
-    // also check old @toongine/engine path
-    const oldPath = path.join(cwd, 'node_modules', '@toongine', 'engine')
-    if (fs.existsSync(oldPath)) engineInstalled = true
+    // also check old paths
+    const oldPaths = [
+      path.join(cwd, 'node_modules', 'toongine-engine'),
+      path.join(cwd, 'node_modules', '@toongine', 'engine'),
+    ]
+    for (const p of oldPaths) {
+      if (fs.existsSync(p)) { engineInstalled = true; break }
+    }
   }
   
   if (!engineInstalled) {
-    console.log('  📦 toongine-engine not installed. Installing...')
+    console.log('  📦 toongine not installed. Installing...')
     const { execSync } = require('child_process')
     try {
-      execSync('npm install toongine-engine', { cwd, stdio: 'inherit' })
+      execSync('npm install toongine', { cwd, stdio: 'inherit' })
       console.log('  ✅ Installed\n')
     } catch (e) {
       console.log('  ❌ Install failed:', e.message)
@@ -686,12 +734,15 @@ function integrate() {
   
   // ── Step 2: Map of local → engine imports ───────────────────────────────
   const replacements = {
-    '@/lib/cie': 'toongine-engine/cie',
-    '@/lib/toon': 'toongine-engine/toon',
-    '@/lib/algorithms': 'toongine-engine/algorithms',
-    '@toongine/engine/cie': 'toongine-engine/cie',
-    '@toongine/engine/toon': 'toongine-engine/toon',
-    '@toongine/engine/algorithms': 'toongine-engine/algorithms',
+    '@/lib/cie': 'toongine/cie',
+    '@/lib/toon': 'toongine/toon',
+    '@/lib/algorithms': 'toongine/algorithms',
+    '@toongine/engine/cie': 'toongine/cie',
+    '@toongine/engine/toon': 'toongine/toon',
+    '@toongine/engine/algorithms': 'toongine/algorithms',
+    'toongine-engine/cie': 'toongine/cie',
+    'toongine-engine/toon': 'toongine/toon',
+    'toongine-engine/algorithms': 'toongine/algorithms',
   }
   
   const stats = { scanned: 0, patched: 0, already: 0, errors: 0 }
@@ -974,7 +1025,7 @@ function compile() {
 function watch() {
   const cwd = process.cwd()
   console.log('\n  👁️  TOON Watcher — Auto-compiling on changes...\n')
-  console.log('  Watching: agent-department/**, docs/**, CLAUDE.md')
+  console.log('  Watching: .toon/memory/agent-department/**, docs/**, CLAUDE.md')
   console.log('  Press Ctrl+C to stop\n')
   
   try {
@@ -983,7 +1034,7 @@ function watch() {
     const { buildDictionary } = require('../dist/toon/dictionary-builder')
     
     const dirs = [
-      path.join(cwd, 'agent-department'),
+      path.join(cwd, '.toon', 'memory', 'agent-department'),
       path.join(cwd, 'docs'),
     ]
     
@@ -996,7 +1047,6 @@ function watch() {
     function handleChange(filePath) {
       const rel = path.relative(cwd, filePath)
       if (!rel.endsWith('.md')) return
-      // Debounce: wait 500ms before compiling
       clearTimeout(handleChange._timer)
       handleChange._timer = setTimeout(() => {
         try {
@@ -1015,13 +1065,12 @@ function watch() {
         watch(dir, { recursive: true }, (eventType, filename) => {
           if (filename && filename.endsWith('.md')) {
             handleChange(path.join(dir, filename))
-            refreshDict() // refresh dict on any change
+            refreshDict()
           }
         })
       }
     }
     
-    // Also watch CLAUDE.md
     const claudePath = path.join(cwd, 'CLAUDE.md')
     if (fs.existsSync(claudePath)) {
       watch(claudePath, (eventType) => {
@@ -1030,7 +1079,6 @@ function watch() {
       })
     }
     
-    // Keep alive
     setInterval(() => {}, 60000)
   } catch(e) { console.log(`  ❌ ${e.message}\n`) }
 }
