@@ -47,9 +47,44 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.compileFile = compileFile;
 exports.compileAll = compileAll;
+exports.compileAllIncremental = compileAllIncremental;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const crypto = __importStar(require("crypto"));
+function loadCache(projectRoot) {
+    const cachePath = path.join(projectRoot, '.toon', '.compile-cache.json');
+    try {
+        if (fs.existsSync(cachePath)) {
+            return JSON.parse(fs.readFileSync(cachePath, 'utf-8'));
+        }
+    }
+    catch { }
+    return { version: '1.0', files: {}, lastFullCompile: '' };
+}
+function saveCache(projectRoot, cache) {
+    const cachePath = path.join(projectRoot, '.toon', '.compile-cache.json');
+    const dir = path.dirname(cachePath);
+    if (!fs.existsSync(dir))
+        fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2), 'utf-8');
+}
+function fileHash(filePath) {
+    try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        return crypto.createHash('sha256').update(content).digest('hex');
+    }
+    catch {
+        return '';
+    }
+}
+function hasChanged(sourcePath, projectRoot, cache) {
+    const fullPath = path.resolve(projectRoot, sourcePath);
+    const hash = fileHash(fullPath);
+    if (!hash)
+        return false;
+    const cached = cache.files[sourcePath];
+    return cached !== hash;
+}
 // ─── Abbreviation Dictionary ───────────────────────────────────────────────────
 const DEFAULT_DICT = {
     'agent-department': 'AGD',
@@ -459,8 +494,12 @@ function compileFile(sourcePath, projectRoot, dict) {
     }
 }
 function compileAll(projectRoot, dict) {
+    return compileAllIncremental(projectRoot, dict, false);
+}
+function compileAllIncremental(projectRoot, dict, force = false) {
     const start = Date.now();
     const results = [];
+    const cache = force ? { version: '1.0', files: {}, lastFullCompile: '' } : loadCache(projectRoot);
     // Find all .md files in agent-department/ (under .toon/memory/)
     const agentDept = path.join(projectRoot, '.toon', 'memory', 'agent-department');
     const agentMem = path.join(projectRoot, '.toon', 'memory', 'agent-memory');
@@ -493,11 +532,25 @@ function compileAll(projectRoot, dict) {
         allFiles.push(...findMdFiles(docsDir));
     if (fs.existsSync(claudeMd))
         allFiles.push('CLAUDE.md');
-    // Compile each file
+    let skipped = 0;
+    // Compile each file — skip unchanged in non-force mode
     for (const file of allFiles) {
+        // Hash-based incremental: skip if unchanged
+        if (!force && !hasChanged(file, projectRoot, cache)) {
+            skipped++;
+            continue;
+        }
         const result = compileFile(file, projectRoot, dict);
         results.push(result);
+        // Update cache with new hash
+        if (!result.error) {
+            const fullPath = path.resolve(projectRoot, file);
+            cache.files[file] = fileHash(fullPath);
+        }
     }
+    // Save cache
+    cache.lastFullCompile = new Date().toISOString();
+    saveCache(projectRoot, cache);
     const duration = Date.now() - start;
     const compiled = results.filter(r => !r.error);
     const errors = results.filter(r => r.error);
@@ -512,6 +565,8 @@ function compileAll(projectRoot, dict) {
             : 0,
         durationMs: duration,
         results,
+        skipped,
+        cached: !force,
     };
 }
 // ─── CLI Entry ─────────────────────────────────────────────────────────────────

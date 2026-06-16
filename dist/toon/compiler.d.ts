@@ -21,4 +21,8 @@ export interface CompileAllResult {
 }
 export declare function compileFile(sourcePath: string, projectRoot: string, dict?: Record<string, string>): CompileResult;
 export declare function compileAll(projectRoot: string, dict?: Record<string, string>): CompileAllResult;
+export declare function compileAllIncremental(projectRoot: string, dict?: Record<string, string>, force?: boolean): CompileAllResult & {
+    skipped: number;
+    cached: boolean;
+};
 //# sourceMappingURL=compiler.d.ts.map

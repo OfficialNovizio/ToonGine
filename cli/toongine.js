@@ -350,8 +350,9 @@ ToonGine CLI v1.5.4
   toongine rollback <ts> Restore from specific snapshot
   toongine sync --once   One-time sync: originals → .toon/
   toongine sync --watch  Auto-sync every 30s
-  toongine compile       Phase 1: text compression (28%) + Phase 2: V3 runtime check (94%)
-  toongine compile --file <path>  Compile single file
+  toongine compile       Phase 1: text compression (28%) + Phase 2: V3 runtime (94%)
+  toongine compile --force   Force recompile all (bypass hash cache)
+  toongine compile --file <path>  Compile single file + rebuild engine
   toongine watch         Auto-compile on file changes (dev mode)
   toongine clean         Remove stale duplicates + reindex engine.bin
   toongine stats         Show dual-doc stats + runtime savings
@@ -923,6 +924,7 @@ function countAgents(d) { if (!fs.existsSync(d)) return '0'; let c = 0; for (con
 function compile() {
   const cwd = process.cwd()
   const flag = process.argv[3]
+  const force = flag === '--force'
   
   if (flag === '--file') {
     const file = process.argv[4]
@@ -935,91 +937,91 @@ function compile() {
       } else {
         console.log(`  ✅ ${file} → ${result.destPath}`)
         console.log(`     ${(result.sourceSize/1024).toFixed(1)}KB → ${(result.compressedSize/1024).toFixed(1)}KB (${result.savingsPercent}%)`)
+        // Trigger engine rebuild for single file change
+        rebuildEngine(cwd)
       }
     } catch(e) { console.log(`  ❌ ${e.message}`) }
     return
   }
   
-  console.log('\n  🔨 TOON Compiler — Phase 1: Text compression...\n')
+  console.log(`\n  🔨 TOON Compiler — Phase 1: Text compression${force ? ' (FORCE — recompiling all)' : ' (incremental — only changed files)'}...\n`)
   try {
-    const { compileAll } = require('../dist/toon/compiler')
-    // Try to load project dictionary
+    const { compileAllIncremental } = require('../dist/toon/compiler')
     let dict = undefined
     try { 
       const db = require('../dist/toon/dictionary-builder')
       dict = db.buildDictionary(cwd)
     } catch {}
     
-    const result = compileAll(cwd, dict)
+    const result = compileAllIncremental(cwd, dict, force)
     console.log(`  📁 ${result.totalFiles} files found`)
+    if (result.skipped > 0) console.log(`  ⏭️  ${result.skipped} skipped (unchanged — cached)`)
     console.log(`  ✅ ${result.compiled} compiled to .toon`)
     if (result.errors > 0) console.log(`  ❌ ${result.errors} errors`)
     console.log(`  📊 ${(result.totalSourceSize/1024).toFixed(1)} KB → ${(result.totalCompressedSize/1024).toFixed(1)} KB`)
     console.log(`  📄 File-level savings: ${result.overallSavingsPercent}% (text abbreviation + markdown stripping)`)
-    console.log(`  ⏱️  ${result.durationMs}ms`)
+    console.log(`  ⏱️  ${result.durationMs}ms${result.cached ? ' (cached incremental)' : ''}`)
     
-    // Show bottom performers
     const poor = result.results.filter(r => !r.error && r.savingsPercent < 30).slice(0, 5)
     if (poor.length > 0) {
       console.log(`\n  ⚠️  Low-compression files (<30%):`)
       poor.forEach(r => console.log(`     ${r.savingsPercent}% ${r.sourcePath.slice(0, 70)}`))
     }
     
-    // ── Phase 2: Build V3 runtime engine ──
-    console.log('\n  🔥 Phase 2: Building V3 runtime engine...\n')
-    try {
-      const engineBin = path.join(cwd, '.toon', 'v3', 'engine.bin')
-      
-      // Check if we can load V3 engine
-      let v3available = false
-      try {
-        require.resolve('../dist/toon/v3/engine')
-        v3available = true
-      } catch {}
-      
-      if (v3available && fs.existsSync(engineBin)) {
-        const { createEngine } = require('../dist/toon/v3/engine')
-        const engine = createEngine(engineBin)
-        const data = engine.load()
-        const corpusKB = (data.corpusSize / 1024).toFixed(1)
-        
-        // Simulate a real query
-        const sampleCtx = engine.process({
-          systemPrompt: 'You are an AI agent',
-          userMessage: 'analyze the project architecture and performance metrics',
-          agentId: 'marcus'
-        })
-        
-        const runtimeSavings = Math.round((1 - sampleCtx.stats.totalContextLen / Math.max(1, data.corpusSize / 3)) * 100)
-        const injectedKB = (sampleCtx.stats.totalContextLen / 1024).toFixed(1)
-        
-        console.log(`  🧠 Corpus: ${corpusKB} KB (${data.chunkCount} chunks indexed)`)
-        console.log(`  📤 Injected per query: ${injectedKB} KB`)
-        console.log(`  🔥 RUNTIME SAVINGS: ${runtimeSavings}% (vs loading full corpus)`)
-        
-        const HARD_BOUNDARY = 94
-        if (runtimeSavings >= HARD_BOUNDARY) {
-          console.log(`  ✅ ${HARD_BOUNDARY}% hard boundary: MET (${runtimeSavings}%)`)
-        } else {
-          console.log(`  ❌ ${HARD_BOUNDARY}% hard boundary: FAILED (${runtimeSavings}% — needs ${HARD_BOUNDARY - runtimeSavings}% more)`)
-          console.log(`\n  🔧 To improve:`)
-          console.log(`     1. Expand abbreviation dictionary: .toon/dictionary.toon`)
-          console.log(`     2. Add more agent memory files to .toon/memory/agent-department/`)
-          console.log(`     3. Run: toongine stats   (for detailed breakdown)`)
-        }
-      } else {
-        console.log('  ⚠️  No V3 engine.bin found — runtime savings unavailable')
-        console.log('  💡 Build it with: toongine compile')
-        console.log('  📊 File-level savings: ' + result.overallSavingsPercent + '% (this is NORMAL — 94% comes from runtime)')
-      }
-    } catch (e) {
-      console.log(`  ⚠️  V3 runtime check skipped: ${e.message}`)
-      console.log('  📊 File-level savings: ' + result.overallSavingsPercent + '%')
-      console.log('  💡 The 94% number is RUNTIME savings (progressive loading), not file compression')
+    // ── Rebuild V3 engine if anything changed ──
+    if (result.compiled > 0 || force) {
+      rebuildEngine(cwd)
+    } else {
+      console.log('\n  ℹ️  No files changed — engine.bin is current')
     }
     
     console.log('')
   } catch(e) { console.log(`  ❌ ${e.message}\n`) }
+}
+
+// Rebuild V3 engine.bin after .toon files change
+function rebuildEngine(cwd) {
+  console.log('\n  🔥 Rebuilding V3 runtime engine...\n')
+  try {
+    const engineBin = path.join(cwd, '.toon', 'v3', 'engine.bin')
+    
+    let v3available = false
+    try {
+      require.resolve('../dist/toon/v3/engine')
+      v3available = true
+    } catch {}
+    
+    if (v3available && fs.existsSync(engineBin)) {
+      const { createEngine } = require('../dist/toon/v3/engine')
+      const engine = createEngine(engineBin)
+      const data = engine.load()
+      const corpusKB = (data.corpusSize / 1024).toFixed(1)
+      
+      const sampleCtx = engine.process({
+        systemPrompt: 'You are an AI agent',
+        userMessage: 'analyze the project architecture and performance metrics',
+        agentId: 'marcus'
+      })
+      
+      const runtimeSavings = Math.round((1 - sampleCtx.stats.totalContextLen / Math.max(1, data.corpusSize / 3)) * 100)
+      const injectedKB = (sampleCtx.stats.totalContextLen / 1024).toFixed(1)
+      
+      console.log(`  🧠 Corpus: ${corpusKB} KB (${data.chunkCount} chunks indexed)`)
+      console.log(`  📤 Injected per query: ${injectedKB} KB`)
+      console.log(`  🔥 RUNTIME SAVINGS: ${runtimeSavings}%`)
+      
+      const HARD_BOUNDARY = 94
+      if (runtimeSavings >= HARD_BOUNDARY) {
+        console.log(`  ✅ ${HARD_BOUNDARY}% boundary: MET`)
+      } else {
+        console.log(`  ❌ ${HARD_BOUNDARY}% boundary: FAILED (needs ${HARD_BOUNDARY - runtimeSavings}% more)`)
+      }
+    } else {
+      console.log('  ⚠️  No engine.bin — runtime savings unavailable')
+    }
+  } catch (e) {
+    console.log(`  ⚠️  Engine check skipped: ${e.message}`)
+  }
 }
 
 function watch() {

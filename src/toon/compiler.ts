@@ -15,6 +15,48 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as crypto from 'crypto'
 
+// ─── Compile Cache (hash-based incremental) ────────────────────────────────────
+
+interface CompileCache {
+  version: string
+  files: Record<string, string>  // sourcePath → SHA256 hash
+  lastFullCompile: string
+}
+
+function loadCache(projectRoot: string): CompileCache {
+  const cachePath = path.join(projectRoot, '.toon', '.compile-cache.json')
+  try {
+    if (fs.existsSync(cachePath)) {
+      return JSON.parse(fs.readFileSync(cachePath, 'utf-8'))
+    }
+  } catch {}
+  return { version: '1.0', files: {}, lastFullCompile: '' }
+}
+
+function saveCache(projectRoot: string, cache: CompileCache): void {
+  const cachePath = path.join(projectRoot, '.toon', '.compile-cache.json')
+  const dir = path.dirname(cachePath)
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2), 'utf-8')
+}
+
+function fileHash(filePath: string): string {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8')
+    return crypto.createHash('sha256').update(content).digest('hex')
+  } catch {
+    return ''
+  }
+}
+
+function hasChanged(sourcePath: string, projectRoot: string, cache: CompileCache): boolean {
+  const fullPath = path.resolve(projectRoot, sourcePath)
+  const hash = fileHash(fullPath)
+  if (!hash) return false
+  const cached = cache.files[sourcePath]
+  return cached !== hash
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface CompileResult {
@@ -494,8 +536,13 @@ export function compileFile(sourcePath: string, projectRoot: string, dict?: Reco
 }
 
 export function compileAll(projectRoot: string, dict?: Record<string, string>): CompileAllResult {
+  return compileAllIncremental(projectRoot, dict, false)
+}
+
+export function compileAllIncremental(projectRoot: string, dict?: Record<string, string>, force: boolean = false): CompileAllResult & { skipped: number; cached: boolean } {
   const start = Date.now()
   const results: CompileResult[] = []
+  const cache = force ? { version: '1.0', files: {}, lastFullCompile: '' } : loadCache(projectRoot)
 
   // Find all .md files in agent-department/ (under .toon/memory/)
   const agentDept = path.join(projectRoot, '.toon', 'memory', 'agent-department')
@@ -526,11 +573,29 @@ export function compileAll(projectRoot: string, dict?: Record<string, string>): 
   if (fs.existsSync(docsDir)) allFiles.push(...findMdFiles(docsDir))
   if (fs.existsSync(claudeMd)) allFiles.push('CLAUDE.md')
 
-  // Compile each file
+  let skipped = 0
+
+  // Compile each file — skip unchanged in non-force mode
   for (const file of allFiles) {
+    // Hash-based incremental: skip if unchanged
+    if (!force && !hasChanged(file, projectRoot, cache)) {
+      skipped++
+      continue
+    }
+
     const result = compileFile(file, projectRoot, dict)
     results.push(result)
+
+    // Update cache with new hash
+    if (!result.error) {
+      const fullPath = path.resolve(projectRoot, file)
+      cache.files[file] = fileHash(fullPath)
+    }
   }
+
+  // Save cache
+  cache.lastFullCompile = new Date().toISOString()
+  saveCache(projectRoot, cache)
 
   const duration = Date.now() - start
   const compiled = results.filter(r => !r.error)
@@ -547,6 +612,8 @@ export function compileAll(projectRoot: string, dict?: Record<string, string>): 
       : 0,
     durationMs: duration,
     results,
+    skipped,
+    cached: !force,
   }
 }
 
