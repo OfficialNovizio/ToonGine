@@ -441,7 +441,7 @@ export function compileFile(sourcePath: string, projectRoot: string, dict?: Reco
     } else if (cleanSource.startsWith('docs/')) {
       destPath = `.toon/docs/${cleanSource.replace(/^docs\//, '').replace(/\.md$/, '.toon')}`
     } else if (cleanSource === 'CLAUDE.md') {
-      destPath = '.toon/project/CLAUDE.md'
+      destPath = '.toon/project/CLAUDE.toon'
     } else {
       destPath = `.toon/${cleanSource.replace(/\.md$/, '.toon')}`
     }
