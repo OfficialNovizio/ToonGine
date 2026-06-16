@@ -1102,8 +1102,61 @@ function hermes() {
   const sub = process.argv[3] || 'status'
   const cwd = process.cwd()
   const configPath = path.join(cwd, '.toon', 'hermes', 'config.json')
-  const hermesHome = path.join(os.homedir(), '.hermes')
-  const hasHermes = fs.existsSync(path.join(hermesHome, 'memories', 'USER.md'))
+
+  // Parse --path flag for custom Hermes location
+  const pathFlagIdx = process.argv.indexOf('--path')
+  const customPath = pathFlagIdx !== -1 ? process.argv[pathFlagIdx + 1] : null
+
+  // ─── Smart Hermes detection ──────────────────────────────────────────────
+  function detectHermes() {
+    const candidates = []
+
+    // 1. Custom --path flag (highest priority)
+    if (customPath) {
+      const p = customPath.replace(/^~/, os.homedir())
+      candidates.push({ path: p, source: '--path flag' })
+    }
+
+    // 2. Default ~/.hermes/
+    const defaultHome = path.join(os.homedir(), '.hermes')
+    candidates.push({ path: defaultHome, source: 'default (~/.hermes/)' })
+
+    // 3. Try to find via hermes binary
+    try {
+      const hermesBin = require('child_process').execSync('which hermes 2>/dev/null || where hermes 2>/dev/null', { encoding: 'utf-8', timeout: 3000 }).trim()
+      if (hermesBin) {
+        // hermes config is usually at ~/.hermes/ regardless of binary location
+        // but we already check that above
+      }
+    } catch {}
+
+    for (const c of candidates) {
+      // Check multiple indicators (any one is enough)
+      const hasConfig = fs.existsSync(path.join(c.path, 'config.yaml'))
+      const hasMemories = fs.existsSync(path.join(c.path, 'memories'))
+      const hasSkills = fs.existsSync(path.join(c.path, 'skills'))
+      const hasUserMd = fs.existsSync(path.join(c.path, 'memories', 'USER.md'))
+
+      if (hasConfig || hasMemories || hasSkills) {
+        return {
+          found: true,
+          home: c.path,
+          source: c.source,
+          details: {
+            config: hasConfig,
+            memories: hasMemories,
+            skills: hasSkills,
+            userMd: hasUserMd,
+          }
+        }
+      }
+    }
+
+    return { found: false, home: defaultHome, source: 'none', details: { config: false, memories: false, skills: false, userMd: false } }
+  }
+
+  const detection = detectHermes()
+  const hasHermes = detection.found
 
   if (!fs.existsSync(configPath)) {
     console.log('\n  ⚠️  .toon/hermes/ not initialized. Run: npx toongine init\n')
@@ -1113,41 +1166,74 @@ function hermes() {
   const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
 
   switch (sub) {
+    case 'detect': {
+      console.log('\n  🔍 Hermes Detection\n')
+      console.log(`  Found:        ${detection.found ? '✅ Yes' : '❌ No'}`)
+      if (detection.found) {
+        console.log(`  Location:     ${detection.home}`)
+        console.log(`  Source:       ${detection.source}`)
+        console.log(`  config.yaml:  ${detection.details.config ? '✅' : '❌'}`)
+        console.log(`  memories/:    ${detection.details.memories ? '✅' : '❌'}`)
+        console.log(`  skills/:      ${detection.details.skills ? '✅' : '❌'}`)
+        console.log(`  USER.md:      ${detection.details.userMd ? '✅' : '❌'}`)
+      }
+      console.log('\n  Use --path to specify custom location:')
+      console.log('    npx toongine hermes connect --path /custom/hermes/home\n')
+      break
+    }
+
     case 'connect': {
       if (!hasHermes) {
-        console.log('\n  ❌ Hermes Agent not found at ~/.hermes/')
-        console.log('  Install: pip install hermes-agent && hermes setup\n')
+        console.log('\n  ❌ Hermes Agent not found')
+        console.log('')
+        console.log('  Checked:')
+        console.log(`    • ${detection.home}  ← not found`)
+        if (customPath) console.log(`    • (custom --path: ${customPath})`)
+        console.log('')
+        console.log('  To fix:')
+        console.log('    1. Install:  pip install hermes-agent && hermes setup')
+        console.log('    2. Or specify: npx toongine hermes connect --path /your/hermes/home')
+        console.log('    3. Detect:   npx toongine hermes detect')
+        console.log('')
         return
       }
+
       cfg.connected = true
-      cfg.hermesHome = hermesHome
+      cfg.hermesHome = detection.home
+      if (!cfg.bridge) cfg.bridge = {}
       cfg.bridge.enabled = true
       cfg.bridge.direction = 'bidirectional'
       cfg.lastSync = new Date().toISOString()
       fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2))
 
-      // Sync Hermes data into .toon/
+      // Sync Hermes data into .toon/memory/hermes/
       const toonHermesDir = path.join(cwd, '.toon', 'memory', 'hermes')
       fs.mkdirSync(toonHermesDir, { recursive: true })
       let synced = 0
 
-      // Sync memories
-      const hermesMemDir = path.join(hermesHome, 'memories')
+      // Sync memories (all .md files, not just USER.md)
+      const hermesMemDir = path.join(detection.home, 'memories')
       if (fs.existsSync(hermesMemDir)) {
-        for (const f of fs.readdirSync(hermesMemDir)) {
-          if (f.endsWith('.md')) {
-            const src = path.join(hermesMemDir, f)
-            const dest = path.join(toonHermesDir, f)
-            if (!fs.existsSync(dest) || fs.statSync(src).mtime > fs.statSync(dest).mtime) {
-              fs.copyFileSync(src, dest)
-              synced++
+        function syncMemDir(dir, destDir) {
+          for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+            const sp = path.join(dir, f.name)
+            const dp = path.join(destDir, f.name)
+            if (f.isDirectory()) {
+              fs.mkdirSync(dp, { recursive: true })
+              syncMemDir(sp, dp)
+            } else if (f.name.endsWith('.md') || f.name.endsWith('.json') || f.name.endsWith('.yaml')) {
+              if (!fs.existsSync(dp) || fs.statSync(sp).mtime > fs.statSync(dp).mtime) {
+                fs.copyFileSync(sp, dp)
+                synced++
+              }
             }
           }
         }
+        syncMemDir(hermesMemDir, toonHermesDir)
       }
 
       // Sync skills
-      const hermesSkillsDir = path.join(hermesHome, 'skills')
+      const hermesSkillsDir = path.join(detection.home, 'skills')
       const toonSkillsDir = path.join(toonHermesDir, 'skills')
       if (fs.existsSync(hermesSkillsDir)) {
         fs.mkdirSync(toonSkillsDir, { recursive: true })
@@ -1165,11 +1251,22 @@ function hermes() {
         copyDir(hermesSkillsDir, toonSkillsDir)
       }
 
+      // Sync config.yaml
+      const hermesConfig = path.join(detection.home, 'config.yaml')
+      if (fs.existsSync(hermesConfig)) {
+        const dest = path.join(toonHermesDir, 'hermes-config.yaml')
+        if (!fs.existsSync(dest) || fs.statSync(hermesConfig).mtime > fs.statSync(dest).mtime) {
+          fs.copyFileSync(hermesConfig, dest)
+          synced++
+        }
+      }
+
       console.log('\n  🔗 Hermes connected!')
-      console.log(`  📂 ${hermesHome}`)
+      console.log(`  📂 ${detection.home}`)
       console.log(`  📥 ${synced} files synced → .toon/memory/hermes/`)
+      if (!detection.details.userMd) console.log('  ℹ️  No USER.md yet — memories will sync when created')
       console.log('  ↔️  Bidirectional sync: memories, skills, sessions')
-      console.log('\n  Run `toongine sync` anytime to refresh.\n')
+      console.log('\n  Run `npx toongine sync` anytime to refresh.\n')
       break
     }
     case 'disconnect': {
@@ -1186,15 +1283,24 @@ function hermes() {
       console.log(`  Hermes Home:  ${cfg.hermesHome}`)
       console.log(`  Bridge:       ${cfg.bridge.enabled ? '✅ Enabled' : '⏸️  Disabled'} (${cfg.bridge.direction})`)
       console.log(`  Last Sync:    ${cfg.lastSync || '—'}`)
-      console.log(`  Hermes Agent: ${hasHermes ? '✅ Installed at ~/.hermes/' : '⚠️  Not found'}`)
+      if (detection.found) {
+        console.log(`  Hermes Agent: ✅ Found at ${detection.home}`)
+        console.log(`  Memories:     ${detection.details.memories ? '✅' : '❌'}`)
+        console.log(`  Skills:       ${detection.details.skills ? '✅' : '❌'}`)
+      } else {
+        console.log('  Hermes Agent: ⚠️  Not detected')
+      }
       console.log('\n  Commands:')
-      console.log('    toongine hermes connect     — connect to existing Hermes')
-      console.log('    toongine hermes disconnect  — disconnect')
-      console.log('    toongine hermes status      — this view\n')
+      console.log('    toongine hermes connect           — connect to existing Hermes')
+      console.log('    toongine hermes connect --path X  — connect at custom path')
+      console.log('    toongine hermes detect            — scan for Hermes installation')
+      console.log('    toongine hermes disconnect        — disconnect')
+      console.log('    toongine hermes status            — this view\n')
       break
     }
     default:
-      console.log('\n  Usage: toongine hermes [connect|disconnect|status]\n')
+      console.log('\n  Usage: toongine hermes [connect|disconnect|status|detect]\n')
+      console.log('    --path <dir>   Specify custom Hermes home directory\n')
   }
 }
 
