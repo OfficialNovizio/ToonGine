@@ -1,4 +1,4 @@
-# ToonGine v1.5.4 — V4 Graph Bridge Active
+# ToonGine v1.5.5 — V4 Graph Bridge Active
 
 **AI Agent OS Kernel — One `npm install`. 24 agents, TOON compressor (99.97% savings), knowledge graphs, Hermes MCP bridge.**
 
