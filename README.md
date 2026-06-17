@@ -53,7 +53,7 @@ npx toongine stats               # compression stats
 
 ```typescript
 import { compileFile, compileAll } from 'toongine/toon'
-const result = compileFile('agent-department/CEO/marcus/MEMORY.md', projectRoot)
+const result = compileFile('.toon/agents/CEO/marcus/MEMORY.md', projectRoot)
 // → { sourcePath, destPath, sourceSize, compressedSize, savingsPercent, sections }
 ```
 
@@ -166,15 +166,25 @@ npx toongine init                 # build unified.db + deploy MCP server + start
 | Manual commands | 2 | **0** (auto-sync) |
 | Fresh install steps | 3+ | **1** (`npx toongine init`)
 
-### 🔄 TOON v3/v4 Compression
+### 🔄 TOON v3/v4 Compression — Migration + Sync
+
+V3 handles the compression pipeline (dictionary, BPE, delta). V4 adds the graph intelligence bridge and MCP gateway on top.
+
 ```bash
+# V3: Migration (safe, with rollback)
 npx toongine absorb --dry-run     # preview migration
 npx toongine absorb               # migrate originals → .toon/ (safe, rollback)
 npx toongine rollback             # list available snapshots
 npx toongine rollback <ts>        # restore specific snapshot
+
+# V3: Sync (keep originals + .toon/ in sync)
 npx toongine sync --once          # one-time originals → .toon/
 npx toongine sync --watch         # auto-sync every 30s
-npx toongine clean                # remove stale duplicates + reindex
+
+# V4: Graph Bridge (one command)
+npx toongine init                 # build unified.db + deploy MCP server + start watchers
+npx toongine graph                # rebuild per-tool graphs → .toon/graphs/
+npx toongine clean                # remove stale duplicates + reindex engine.bin
 ```
 
 ### 🧪 Self-Healing
@@ -192,40 +202,53 @@ npx toongine dashboard --show      # show in settings
 npx toongine dashboard --status    # check status
 ```
 
-### 🔌 Hermes Agent — VPS-Powered Agent Brain
+### 🔌 Hermes Agent — MCP Graph Bridge + VPS Memory
 
-ToonGine agents connect to **Hermes Agent** (by Nous Research) running on your VPS for persistent memory, cross-session skills, and identity context. Hermes acts as the persistent brain — agents receive your preferences, learned workflows, and project standards in every LLM call.
+ToonGine agents connect to **Hermes Agent** (by Nous Research) via two channels:
 
-#### Full Setup — Install → Hermes → Agents Connected
+1. **MCP stdio** — 5 graph tools auto-registered (`toon_graph_*`). Agents query the unified knowledge graph at runtime.
+2. **VPS memory sync** — persistent USER identity, cross-session skills, and project standards synced via SSH.
+
+#### Full Setup — Install → MCP → Agents Connected
 
 ```bash
 # Step 1: Install ToonGine
 npm install toongine
 
-# Step 2: Integrate (wires imports, builds graphs, deploys agents)
-npx toongine integrate
+# Step 2: Activate V4 (builds unified.db, deploys MCP server, starts watchers)
+npx toongine init
 
-# Step 3: Save your VPS (one time — IP stays in gitignored .toon/hermes/config.json)
+# Step 3: Register MCP server with Hermes (one time)
+hermes mcp add toongine-graph --command python3 \
+  --args /path/to/project/.toon/hermes/mcp-server.py \
+  --args /path/to/project
+
+# Step 4: Save your VPS for memory sync (one time — IP stays in gitignored config)
 npx toongine hermes save-remote root@YOUR_VPS_IP
 
-# Step 4: Connect (pulls Hermes memories, skills, sessions via SSH)
-# Requires passwordless SSH to your VPS
+# Step 5: Connect memory sync (pulls Hermes memories, skills, sessions via SSH)
 npx toongine hermes connect
 
-# Step 5: Build (compiles everything into engine.bin)
-npx toongine graph && npx toongine compile --force
-
-# Step 6: Verify
+# Step 6: Verify all systems
 npx toongine doctor
-# Should show: 🔗 Hermes: 🔗 Connected · Agent Memory: 24 agents
+# Expected: 11/11 operational · 🔗 Hermes: 🔗 Connected · Agent Memory: 24 agents
+# Also run: hermes mcp test toongine-graph → ✓ Connected · 5 tools discovered
 ```
+
+#### After Setup — What Agents Get
+
+Every agent session now has:
+- **5 graph tools** via MCP — explore code, find callers, analyze impact, full-text search, graph health
+- **Identity + preferences** via VPS memory — USER.md injected into every session
+- **85+ skills** via VPS sync — indexed in engine.bin, matched by task type
+- **Session history** via VPS — CIE retrieves relevant past decisions
 
 #### Complete Uninstall → Reinstall with Hermes Activation
 
 ```bash
 # 1. Wipe everything ToonGine-related
 rm -rf node_modules/toongine
-rm -rf .toon/v3 .toon/codegraph .toon/graphify
+rm -rf .toon/graph .toon/graphify .toon/codegraph
 rm -f toongine.config.json
 
 # 2. Keep your Hermes VPS config (gitignored, safe)
@@ -235,14 +258,14 @@ rm -f toongine.config.json
 # 3. Reinstall fresh
 npm install toongine
 
-# 4. Re-integrate
-npx toongine integrate
+# 4. Activate V4 (replaces integrate)
+npx toongine init
 
-# 5. Reconnect Hermes (auto-reads saved IP from .toon/hermes/config.json)
+# 5. Reconnect Hermes MCP + memory sync
 npx toongine hermes connect
 
-# 6. Rebuild everything
-npx toongine graph && npx toongine compile --force
+# 6. Rebuild everything (init does this automatically)
+npx toongine init && npx toongine compile --force
 
 # 7. Verify all systems
 npx toongine doctor
@@ -252,7 +275,8 @@ npx toongine doctor
 #### What Hermes Provides (when connected)
 
 | Context | Source | Injected via |
-|---------|--------|-------------|
+|---|---|---|
+| **5 graph tools** | `toongine-graph` MCP server | Auto-registered at Hermes startup (toon_graph_*) |
 | **USER identity** | `~/.hermes/memories/USER.md` | Always injected (name, role, GitHub, preferences) |
 | **Project standards** | `~/.hermes/memories/MEMORY.md` | Keyword-matched per task |
 | **85+ skills** | `~/.hermes/skills/` | Indexed in engine.bin, matched by task type |
@@ -303,22 +327,27 @@ License     : MIT
 Repo        : github.com/OfficialNovizio/ToonGine
 ```
 
-## CLI Reference (19 commands)
+## CLI Reference (27 commands)
 
 ```bash
 # Setup
-toongine init                    # first-time setup (new projects)
-toongine integrate               # wire into existing project (non-destructive)
-toongine doctor                  # health check
+toongine init                    # V4 activation — builds unified.db + deploys MCP server + starts watchers
+toongine integrate               # wire into existing project (non-destructive, pre-V4)
+toongine doctor                  # health check — all systems including Hermes
 
 # Agents
 toongine agents                  # list all 24 agents
 toongine agents --verify         # validate manifests
 
 # TOON Compiler
-toongine compile                 # compile all .md → .toon
+toongine compile                 # compile all .md → .toon (V3 pipeline)
 toongine compile --file <path>   # single file
 toongine watch                   # auto-compile on change
+
+# V4 Graph Bridge
+toongine graph                   # rebuild per-tool knowledge graphs → .toon/graphs/
+toongine stats                   # compression statistics + graph health
+npx tsx scripts/build-unified-graph.ts  # rebuild unified.db from all 3 tools
 
 # Migration
 toongine absorb                  # migrate originals → .toon/
@@ -329,9 +358,7 @@ toongine sync --once             # one-time sync
 toongine sync --watch            # live sync
 
 # Maintenance
-toongine clean                   # remove stale duplicates + reindex
-toongine stats                   # compression statistics
-toongine graph                   # rebuild knowledge graphs
+toongine clean                   # remove stale duplicates + reindex engine.bin
 
 # Dashboard
 toongine dashboard               # start (port 4200)
@@ -339,12 +366,13 @@ toongine dashboard --hide        # hide
 toongine dashboard --show        # show
 toongine dashboard --status      # check
 
-# Hermes Agent
+# Hermes Agent + MCP
 toongine hermes status           # connection status
-toongine hermes detect           # scan for Hermes
+toongine hermes detect           # scan for local/remote Hermes
 toongine hermes save-remote user@host  # save VPS IP (gitignored)
-toongine hermes connect          # connect (auto-uses saved remote)
+toongine hermes connect          # connect memory sync (auto-uses saved remote)
 toongine hermes disconnect       # disconnect
+hermes mcp test toongine-graph   # verify MCP graph tools (5 tools)
 
 # Info
 toongine version                 # show version
@@ -407,8 +435,10 @@ import { injectDashboard } from 'toongine/dashboard'
 | Priority Queue | Top-K capped selection | O(n log k) |
 | BFS | Blast radius analysis | O(V+E) |
 | Circuit Breaker | Failure isolation | O(1) |
-| BPE | Byte-pair encoding (V3) | O(n·v) |
+| BPE | Byte-pair encoding (V3/V4) | O(n·v) |
 | Stemmer | Porter-style (V3) | O(n) |
+| FTS5 | Full-text graph search (V4) | O(log n) |
+| Stratified Delivery | 3-layer context injection (V4) | O(1) |
 
 ## Provider Support
 
