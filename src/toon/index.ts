@@ -36,3 +36,9 @@ export type { DualDocStats } from './v3/dual-docs'
 // ─── v4 Stratified Context Engine ─────────────────────────────────────────
 export { summarize, formatStatHeader, formatTopN, stratify, injectDelta, storeForExpand, expand } from './v4/stratify'
 export type { NumericStats, StringStats, StatProfile, StratifiedPayload } from './v4/stratify'
+
+// ─── v4 Graph Intelligence Bridge ─────────────────────────────────────────
+export { UnifiedGraph, createUnifiedGraph } from './v4/unified-graph'
+export { UNIFIED_SCHEMA, SQL } from './v4/unified-schema'
+export { nodeId, stableHash } from './v4/bridge-types'
+export type { UnifiedNode, UnifiedEdge, UnifiedGraphStats, IngestionResult, BridgeConfig, MCPToolDef } from './v4/bridge-types'

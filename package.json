@@ -1,7 +1,7 @@
 {
   "name": "toongine",
   "version": "1.5.4",
-  "description": "ToonGine \u2014 TOON compression engine for AI agents. Context Intelligence Engine, knowledge graphs, Hermes sync. One install, full agent context pipeline.",
+  "description": "ToonGine — TOON compression engine for AI agents. Context Intelligence Engine, knowledge graphs, Hermes sync. One install, full agent context pipeline.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -32,7 +32,10 @@
       "types": "./dist/dashboard/index.d.ts",
       "import": "./dist/dashboard/index.js",
       "require": "./dist/dashboard/index.js"
-    }
+    },
+    "./toon/v4/bridge-types": "./dist/toon/v4/bridge-types.js",
+    "./toon/v4/unified-schema": "./dist/toon/v4/unified-schema.js",
+    "./toon/v4/unified-graph": "./dist/toon/v4/unified-graph.js"
   },
   "bin": {
     "toongine": "./cli/toongine.js"
@@ -48,7 +51,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "echo 'Tests pass \u2014 CI pending'",
+    "test": "echo 'Tests pass — CI pending'",
     "prepublishOnly": "npm run build",
     "prepare": "npm run build",
     "postinstall": "node scripts/postinstall.js"
