@@ -170,6 +170,43 @@ try {
   if (needsInit) {
     console.log('  📦 Running: npx toongine init\n')
     execSync(`node "${cliPath}" init`, { cwd, stdio: 'inherit' })
+
+    // ── Auto-register MCP server with Hermes ──────────────────────────
+    try {
+      const os = require('os')
+      const hermesConfigPath = path.join(os.homedir(), '.hermes', 'config.yaml')
+
+      if (fs.existsSync(hermesConfigPath)) {
+        const configContent = fs.readFileSync(hermesConfigPath, 'utf-8')
+        // Check if already registered
+        if (!configContent.includes('toongine-graph')) {
+          // Use Python for safe YAML merge (one-liner)
+          const mcpServerPath = path.join(cwd, '.toon', 'hermes', 'mcp-server.py').replace(/\\/g, '/')
+          const projectRoot = cwd.replace(/\\/g, '/')
+          execSync(
+            `python3 -c "
+import yaml, os
+p = os.path.expanduser('${hermesConfigPath}')
+with open(p) as f: c = yaml.safe_load(f) or {}
+c.setdefault('mcp_servers', {})['toongine-graph'] = {
+    'command': 'python3',
+    'args': ['${mcpServerPath}', '${projectRoot}'],
+    'timeout': 30,
+    'connect_timeout': 15
+}
+with open(p, 'w') as f: yaml.dump(c, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+print('OK')
+"`, { stdio: 'pipe', timeout: 10000 }
+          )
+          console.log('  🔌 MCP graph tools auto-registered with Hermes')
+          console.log('     Restart Hermes to activate 5 graph tools')
+        } else {
+          console.log('  ✅ MCP already registered with Hermes')
+        }
+      }
+    } catch (e) {
+      // Hermes not installed or config not found — skip silently
+    }
   }
 
   if (needsIntegrate) {

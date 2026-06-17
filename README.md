@@ -24,17 +24,20 @@ npx toongine dashboard        # live dashboard → localhost:4200
 ## What Ships — One `npm install`
 
 ```bash
+# ONE command — everything is automatic
 npm install toongine
-       │
-       ▼  postinstall.js + npx toongine init auto-deploys:
-       │
-       ├── .toon/agents/                  24 agents · 918 files
-       ├── .toon/graph/unified.db          unified knowledge graph (4,708 nodes, 12,004 edges)
-       ├── .toon/graphify/ + .toon/codegraph/  per-tool graph outputs
-       ├── .toon/hermes/mcp-server.py      MCP stdio server (5 graph tools for Hermes)
-       ├── .toon/docs/                    CONSTITUTION.toon + ENGINE.toon
-       ├── docs/                          human-readable CONSTITUTION + ENGINE
-       └── ~/.hermes/.../yvon/            Hermes skill files (auto-generated, graph tools injected)
+
+# That's it. Postinstall auto-deploys:
+#  ✅ .toon/agents/ — 24 agents
+#  ✅ .toon/graph/unified.db — unified knowledge graph
+#  ✅ .toon/hermes/mcp-server.py — MCP graph bridge
+#  ✅ ~/.hermes/.../yvon/ — Hermes skills with graph tools
+#  ✅ ~/.hermes/config.yaml — MCP server auto-registered
+#  ✅ File watchers started
+
+# Verify everything
+npx toongine doctor
+hermes mcp test toongine-graph  # → 5 tools discovered
 ```
 
 ---
@@ -209,30 +212,23 @@ ToonGine agents connect to **Hermes Agent** (by Nous Research) via two channels:
 1. **MCP stdio** — 5 graph tools auto-registered (`toon_graph_*`). Agents query the unified knowledge graph at runtime.
 2. **VPS memory sync** — persistent USER identity, cross-session skills, and project standards synced via SSH.
 
-#### Full Setup — Install → MCP → Agents Connected
+#### Full Setup — One Install
 
 ```bash
-# Step 1: Install ToonGine
+# Step 1: Install (auto-deploys everything: unified.db, MCP server, skills, watchers)
 npm install toongine
 
-# Step 2: Activate V4 (builds unified.db, deploys MCP server, starts watchers)
-npx toongine init
-
-# Step 3: Register MCP server with Hermes (one time)
-hermes mcp add toongine-graph --command python3 \
-  --args /path/to/project/.toon/hermes/mcp-server.py \
-  --args /path/to/project
-
-# Step 4: Save your VPS for memory sync (one time — IP stays in gitignored config)
+# Step 2: Save your VPS for memory sync (one time — IP stays in gitignored config)
 npx toongine hermes save-remote root@YOUR_VPS_IP
 
-# Step 5: Connect memory sync (pulls Hermes memories, skills, sessions via SSH)
+# Step 3: Connect memory sync (pulls Hermes memories, skills, sessions via SSH)
 npx toongine hermes connect
 
-# Step 6: Verify all systems
+# Step 4: Verify
 npx toongine doctor
 # Expected: 11/11 operational · 🔗 Hermes: 🔗 Connected · Agent Memory: 24 agents
-# Also run: hermes mcp test toongine-graph → ✓ Connected · 5 tools discovered
+hermes mcp test toongine-graph
+# Expected: ✓ Connected · 5 tools discovered
 ```
 
 #### After Setup — What Agents Get
