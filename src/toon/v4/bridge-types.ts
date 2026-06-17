@@ -8,7 +8,7 @@ export interface UnifiedNode {
   name: string             // human-readable name
   qualified_name: string   // full path or fully-qualified symbol name
   kind: string             // File | Function | Class | Method | Variable | Route | Community
-  file_path: string        // source file path (relative to project root)
+  file_path: string | null // source file path (relative to project root)
   language: string | null  // typescript | python | javascript | etc.
   community: string | null // community/cluster name
   tool_source: string      // 'code-review-graph' | 'graphify' | 'codegraph'

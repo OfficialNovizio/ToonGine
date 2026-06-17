@@ -35,7 +35,8 @@
     },
     "./toon/v4/bridge-types": "./dist/toon/v4/bridge-types.js",
     "./toon/v4/unified-schema": "./dist/toon/v4/unified-schema.js",
-    "./toon/v4/unified-graph": "./dist/toon/v4/unified-graph.js"
+    "./toon/v4/unified-graph": "./dist/toon/v4/unified-graph.js",
+    "./toon/v4/ingesters": "./dist/toon/v4/ingesters/index.js"
   },
   "bin": {
     "toongine": "./cli/toongine.js"
