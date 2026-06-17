@@ -1,6 +1,6 @@
 {
   "name": "toongine",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "description": "ToonGine — TOON compression engine for AI agents. Context Intelligence Engine, knowledge graphs, Hermes sync. One install, full agent context pipeline.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
