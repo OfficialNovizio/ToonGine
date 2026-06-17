@@ -501,8 +501,9 @@ function compileAllIncremental(projectRoot, dict, force = false) {
     const start = Date.now();
     const results = [];
     const cache = force ? { version: '1.0', files: {}, lastFullCompile: '' } : loadCache(projectRoot);
-    // Find all .md files in agent-department/ (under .toon/memory/)
+    // Find all .md files in agent-department/ (under .toon/memory/ or .toon/agents/)
     const agentDept = path.join(projectRoot, '.toon', 'memory', 'agent-department');
+    const agentDeptNew = path.join(projectRoot, '.toon', 'agents');
     const agentMem = path.join(projectRoot, '.toon', 'memory', 'agent-memory');
     const docsDir = path.join(projectRoot, 'docs');
     const claudeMd = path.join(projectRoot, 'CLAUDE.md');
@@ -527,6 +528,8 @@ function compileAllIncremental(projectRoot, dict, force = false) {
     const allFiles = [];
     if (fs.existsSync(agentDept))
         allFiles.push(...findMdFiles(agentDept));
+    if (fs.existsSync(agentDeptNew))
+        allFiles.push(...findMdFiles(agentDeptNew));
     if (fs.existsSync(agentMem))
         allFiles.push(...findMdFiles(agentMem));
     if (fs.existsSync(docsDir))

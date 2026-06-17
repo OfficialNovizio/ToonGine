@@ -39,6 +39,7 @@ export function compile(options: CompileOptions): CompileResult {
   const docs = collectFiles(join(root, 'docs'), '.md')
   const mems = [
     ...collectFiles(join(root, 'agent-department'), '.md').filter(f => f.includes('MEMORY') || f.includes('AGENT')),
+    ...collectFiles(join(root, '.toon', 'agents'), '.md').filter(f => f.includes('MEMORY') || f.includes('AGENT')),
     ...collectFiles(join(root, 'agent-memory'), '.md').filter(f => f.includes('MEMORY') || f.includes('AGENT')),
   ]
   const graphsMd = collectFiles(join(root, '.toon', 'graphify'), '.md')

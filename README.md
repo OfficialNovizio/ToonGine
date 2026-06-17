@@ -136,13 +136,94 @@ npx toongine dashboard --show      # show in settings
 npx toongine dashboard --status    # check status
 ```
 
-### 🔌 Hermes Sync
-Bidirectional CRDT memory sync with Hermes agent runtime.
+### 🔌 Hermes Agent — VPS-Powered Agent Brain
+
+ToonGine agents connect to **Hermes Agent** (by Nous Research) running on your VPS for persistent memory, cross-session skills, and identity context. Hermes acts as the persistent brain — agents receive your preferences, learned workflows, and project standards in every LLM call.
+
+#### Full Setup — Install → Hermes → Agents Connected
+
+```bash
+# Step 1: Install ToonGine
+npm install toongine
+
+# Step 2: Integrate (wires imports, builds graphs, deploys agents)
+npx toongine integrate
+
+# Step 3: Save your VPS (one time — IP stays in gitignored .toon/hermes/config.json)
+npx toongine hermes save-remote root@YOUR_VPS_IP
+
+# Step 4: Connect (pulls Hermes memories, skills, sessions via SSH)
+# Requires passwordless SSH to your VPS
+npx toongine hermes connect
+
+# Step 5: Build (compiles everything into engine.bin)
+npx toongine graph && npx toongine compile --force
+
+# Step 6: Verify
+npx toongine doctor
+# Should show: 🔗 Hermes: 🔗 Connected · Agent Memory: 24 agents
+```
+
+#### Complete Uninstall → Reinstall with Hermes Activation
+
+```bash
+# 1. Wipe everything ToonGine-related
+rm -rf node_modules/toongine
+rm -rf .toon/v3 .toon/codegraph .toon/graphify
+rm -f toongine.config.json
+
+# 2. Keep your Hermes VPS config (gitignored, safe)
+#    .toon/hermes/config.json — your remote IP lives here, never delete this
+#    .toon/agents/            — agent memory source of truth, keep this too
+
+# 3. Reinstall fresh
+npm install toongine
+
+# 4. Re-integrate
+npx toongine integrate
+
+# 5. Reconnect Hermes (auto-reads saved IP from .toon/hermes/config.json)
+npx toongine hermes connect
+
+# 6. Rebuild everything
+npx toongine graph && npx toongine compile --force
+
+# 7. Verify all systems
+npx toongine doctor
+# Expected: 11/11 operational · 🔗 Hermes: 🔗 Connected · Agent Memory: 24 agents
+```
+
+#### What Hermes Provides (when connected)
+
+| Context | Source | Injected via |
+|---------|--------|-------------|
+| **USER identity** | `~/.hermes/memories/USER.md` | Always injected (name, role, GitHub, preferences) |
+| **Project standards** | `~/.hermes/memories/MEMORY.md` | Keyword-matched per task |
+| **85+ skills** | `~/.hermes/skills/` | Indexed in engine.bin, matched by task type |
+| **Session history** | `~/.hermes/sessions/` | CIE retrieves relevant past decisions |
 
 ```typescript
+// Programmatic access
 import { generateHermesSkills } from 'toongine/agents'
 generateHermesSkills(projectRoot)  // auto-generate skill files for all 24 agents
+
+import { syncWithHermes } from 'toongine/adapters'
+const ctx = syncWithHermes()       // bidirectional CRDT memory sync
 ```
+
+#### Hermes CLI Reference
+
+```bash
+toongine hermes status             # connection status
+toongine hermes detect             # scan for local/remote Hermes
+toongine hermes detect --remote host  # scan remote VPS
+toongine hermes save-remote user@host  # save VPS IP (gitignored)
+toongine hermes connect            # connect (auto-uses saved remote)
+toongine hermes connect --remote user@host  # connect to specific VPS
+toongine hermes disconnect         # disconnect
+```
+
+> **🔒 Security:** `save-remote` stores your VPS IP in `.toon/hermes/config.json` — a gitignored file that never leaves your machine. Connection uses SSH with exponential backoff (max 3 retries) to prevent brute-force lockouts.
 
 ---
 
@@ -201,6 +282,13 @@ toongine dashboard               # start (port 4200)
 toongine dashboard --hide        # hide
 toongine dashboard --show        # show
 toongine dashboard --status      # check
+
+# Hermes Agent
+toongine hermes status           # connection status
+toongine hermes detect           # scan for Hermes
+toongine hermes save-remote user@host  # save VPS IP (gitignored)
+toongine hermes connect          # connect (auto-uses saved remote)
+toongine hermes disconnect       # disconnect
 
 # Info
 toongine version                 # show version

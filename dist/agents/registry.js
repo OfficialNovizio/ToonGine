@@ -45,7 +45,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const manifest_schema_1 = require("./manifest-schema");
 function loadRegistry(projectRoot) {
-    const agentDir = path.join(projectRoot, '.toon', 'memory', 'agent-department');
+    const agentDir = path.join(projectRoot, '.toon', 'agents');
     const agents = [];
     const validations = [];
     if (!fs.existsSync(agentDir)) {

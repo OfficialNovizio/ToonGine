@@ -23,6 +23,7 @@ function compile(options) {
     const docs = collectFiles((0, path_1.join)(root, 'docs'), '.md');
     const mems = [
         ...collectFiles((0, path_1.join)(root, 'agent-department'), '.md').filter(f => f.includes('MEMORY') || f.includes('AGENT')),
+        ...collectFiles((0, path_1.join)(root, '.toon', 'agents'), '.md').filter(f => f.includes('MEMORY') || f.includes('AGENT')),
         ...collectFiles((0, path_1.join)(root, 'agent-memory'), '.md').filter(f => f.includes('MEMORY') || f.includes('AGENT')),
     ];
     const graphsMd = collectFiles((0, path_1.join)(root, '.toon', 'graphify'), '.md');
