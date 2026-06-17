@@ -504,8 +504,8 @@ function init() {
   const config = {
     version: '1.5.4',
     projectRoot: cwd,
-    graphifyReport: path.join(cwd, '.toon', 'graphs', 'GRAPH_REPORT.md'),
-    codegraphReport: path.join(cwd, '.toon', 'graphs', 'CODEGRAPH_REPORT.md'),
+    graphifyReport: path.join(cwd, '.toon', 'graphify', 'GRAPH_REPORT.md'),
+    codegraphReport: path.join(cwd, '.toon', 'codegraph', 'CODEGRAPH_REPORT.md'),
     agentMemoryDir: path.join(cwd, '.toon', 'memory'),
     hermesMemoryDir: path.join(os.homedir(), '.hermes', 'memories'),
     projectClaudePath: path.join(cwd, 'CLAUDE.md'),
