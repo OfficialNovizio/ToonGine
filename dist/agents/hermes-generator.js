@@ -75,8 +75,8 @@ function generateSkillFile(agent, projectRoot) {
     const tools = agent.tools.join(', ');
     // Try to load AGENT.md for personality
     let personality = '';
-    const agentMd = path.join(projectRoot, 'agent-department', agent.agent.department, agent.agent.name.toLowerCase(), 'AGENT.md');
-    const altAgentMd = path.join(projectRoot, 'agent-department', agent.agent.department, agent.agent.name, 'AGENT.md');
+    const agentMd = path.join(projectRoot, '.toon', 'agents', agent.agent.department, agent.agent.name.toLowerCase(), 'AGENT.md');
+    const altAgentMd = path.join(projectRoot, '.toon', 'agents', agent.agent.department, agent.agent.name, 'AGENT.md');
     for (const p of [agentMd, altAgentMd]) {
         if (fs.existsSync(p)) {
             const content = fs.readFileSync(p, 'utf-8');

@@ -103,7 +103,7 @@ for (const s of top30.slice(0, 5)) {
 console.log('');
 console.log('═══════════════════════════════');
 console.log('MARCUS MEMORY.md:');
-const memRaw = fs.readFileSync('/root/yvon/agent-department/CEO/marcus/MEMORY.md', 'utf-8');
+const memRaw = fs.readFileSync('/root/yvon/.toon/agents/CEO/marcus/MEMORY.md', 'utf-8');
 const memStripped = strip(memRaw);
 const memSections = splitSections(memStripped.output);
 const memIdf = buildIDF(memStripped.output);

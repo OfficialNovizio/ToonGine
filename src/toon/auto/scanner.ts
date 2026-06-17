@@ -394,7 +394,7 @@ function findDocuments(root: string): string[] {
 
 function findMemories(root: string): string[] {
   const paths: string[] = []
-  const memDirs = ['agent-memory', 'agent-department', 'memories', '.hermes/memories']
+  const memDirs = ['.toon/agents', 'agent-memory', 'agent-department', 'memories', '.hermes/memories']
   for (const dir of memDirs) {
     const full = join(root, dir)
     if (existsSync(full)) {

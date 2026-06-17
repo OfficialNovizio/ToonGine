@@ -66,8 +66,7 @@ state.hasDashboard = fs.existsSync(path.join(cwd, 'app', 'settings', 'dashboard'
 state.hasConfig = fs.existsSync(path.join(cwd, 'toongine.config.json'))
 
 // Check for agents
-state.hasAgents = fs.existsSync(path.join(cwd, 'agent-department')) || 
-                  fs.existsSync(path.join(cwd, 'agent-memory'))
+state.hasAgents = fs.existsSync(path.join(cwd, '.toon', 'agents'))
 
 // Detect framework
 state.isNextJS = fs.existsSync(path.join(cwd, 'next.config.ts')) || 
@@ -120,7 +119,7 @@ try {
 
   // Deploy agents (never overwrite existing user-modified agent files)
   const agentSrc = path.join(templateRoot, 'agents')
-  const agentDest = path.join(cwd, '.toon', 'memory', 'agent-department')
+  const agentDest = path.join(cwd, '.toon', 'agents')
   if (fs.existsSync(agentSrc)) {
     const agentCount = copyDir(agentSrc, agentDest, false)
     const deptCount = fs.readdirSync(agentDest).filter(d => 

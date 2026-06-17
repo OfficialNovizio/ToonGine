@@ -325,7 +325,7 @@ function findDocuments(root) {
 }
 function findMemories(root) {
     const paths = [];
-    const memDirs = ['agent-memory', 'agent-department', 'memories', '.hermes/memories'];
+    const memDirs = ['.toon/agents', 'agent-memory', 'agent-department', 'memories', '.hermes/memories'];
     for (const dir of memDirs) {
         const full = (0, path_1.join)(root, dir);
         if ((0, fs_1.existsSync)(full)) {

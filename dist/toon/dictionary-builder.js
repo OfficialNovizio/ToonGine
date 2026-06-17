@@ -59,7 +59,7 @@ function buildDictionary(projectRoot, minFreq = 5) {
             }
         }
     }
-    collect(path.join(projectRoot, 'agent-department'));
+    collect(path.join(projectRoot, '.toon', 'agents'));
     collect(path.join(projectRoot, 'docs'));
     // Extract frequent 2-4 word phrases
     const phraseCounts = new Map();
