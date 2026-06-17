@@ -37,7 +37,12 @@
     "./toon/v4/unified-schema": "./dist/toon/v4/unified-schema.js",
     "./toon/v4/unified-graph": "./dist/toon/v4/unified-graph.js",
     "./toon/v4/ingesters": "./dist/toon/v4/ingesters/index.js",
-    "./toon/v4/engine": "./dist/toon/v4/engine.js"
+    "./toon/v4/engine": "./dist/toon/v4/engine.js",
+    "./toon/v4/context-builder": "./dist/toon/v4/context-builder.js",
+    "./toon/v4/auto-activate": "./dist/toon/v4/auto-activate.js",
+    "./toon/v4/tool-installer": "./dist/toon/v4/tool-installer.js",
+    "./toon/v4/watcher": "./dist/toon/v4/watcher.js",
+    "./toon/v4/hermes-gateway": "./dist/toon/v4/hermes-gateway.js"
   },
   "bin": {
     "toongine": "./cli/toongine.js"
