@@ -1208,6 +1208,15 @@ function hermes() {
     }
 
     case 'connect': {
+      // If no --remote flag but config has saved remote, use it
+      if (!remoteHost && cfg.remoteHost && !customPath) {
+        // Auto-use saved remote config (IP protected in gitignored config)
+        const savedRemote = `${cfg.remoteUser || 'root'}@${cfg.remoteHost}`
+        process.argv.push('--remote', savedRemote)
+        // Recurse: re-run detection with remote flag
+        return hermes()
+      }
+
       if (!hasHermes) {
         console.log('\n  ❌ Hermes Agent not found')
         console.log('')
@@ -1217,10 +1226,10 @@ function hermes() {
         if (customPath) console.log(`    • (custom --path: ${customPath})`)
         console.log('')
         console.log('  To fix:')
-        console.log('    1. Local:   pip install hermes-agent && hermes setup')
-        console.log('    2. Remote:  npx toongine hermes connect --remote user@vps-host')
-        console.log('    3. Custom:  npx toongine hermes connect --path /your/hermes/home')
-        console.log('    4. Detect:  npx toongine hermes detect')
+        console.log('    1. Save remote: npx toongine hermes save-remote root@YOUR_IP')
+        console.log('    2. Local:       pip install hermes-agent && hermes setup')
+        console.log('    3. Custom:      npx toongine hermes connect --path /your/hermes/home')
+        console.log('    4. Detect:      npx toongine hermes detect')
         console.log('')
         return
       }
@@ -1353,6 +1362,25 @@ function hermes() {
       console.log('    toongine hermes detect --remote host  — scan remote VPS')
       console.log('    toongine hermes disconnect            — disconnect')
       console.log('    toongine hermes status                — this view\\n')
+      break
+    }
+    case 'save-remote': {
+      const host = process.argv[4]
+      if (!host || !host.includes('@')) {
+        console.log('\n  Usage: npx toongine hermes save-remote user@host[:port]\n')
+        console.log('  Example: npx toongine hermes save-remote root@YOUR_VPS_IP\n')
+        return
+      }
+      const [user, hostPart] = host.split('@')
+      const [hostname, port] = hostPart.split(':')
+      cfg.remoteHost = hostname
+      cfg.remoteUser = user || 'root'
+      cfg.remotePort = parseInt(port) || 22
+      cfg.hermesHome = `${user}@${hostname}:~/.hermes`
+      fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2))
+      console.log(`\n  🔒 Remote saved: ${user}@${hostname}`)
+      console.log(`  📁 Config: .toon/hermes/config.json (gitignored)`)
+      console.log(`\n  Now run: npx toongine hermes connect\n`)
       break
     }
     default:
