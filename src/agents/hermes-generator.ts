@@ -76,7 +76,7 @@ function generateSkillFile(agent: AgentManifest, projectRoot: string): string {
   return `---
 name: ${agent.agent.id}
 description: ${agent.agent.name} — ${agent.agent.title}. ${purpose.slice(0, 100)}
-tools: [${tools}]
+tools: [${tools}, toon_graph_explore, toon_graph_callers, toon_graph_impact, toon_graph_search, toon_graph_status]
 level: ${agent.agent.level}
 department: ${agent.agent.department}
 generated: true
@@ -101,6 +101,15 @@ ${agent.skills.map((s: string) => `- ${s}`).join('\n')}
 ## Tools
 ${agent.tools.map((t: string) => `- ${t}`).join('\n')}
 
+## Graph Intelligence Tools (via ToonGine V4 Bridge)
+These tools query the unified code knowledge graph (4,708 nodes, 12,004 edges, 479 files). Use them to understand code architecture before making changes.
+
+- **toon_graph_explore** — Natural-language code exploration (e.g., "auth flow", "database schema")
+- **toon_graph_callers** — Find who calls a given symbol/function
+- **toon_graph_impact** — Blast-radius analysis (what breaks if we change X?)
+- **toon_graph_search** — Full-text search across all files, symbols, and communities
+- **toon_graph_status** — Graph health snapshot (nodes, edges, staleness, language breakdown)
+
 ## Operating Rules
 - You are bound by the YVON CONSTITUTION (10 immutable laws).
 - Load CONSTITUTION.toon at session start.
@@ -109,6 +118,7 @@ ${agent.tools.map((t: string) => `- ${t}`).join('\n')}
 - All actions are logged to Supabase audit trail.
 - Report to Marcus (CEO) for strategic decisions.
 - Report to Diana (COO) for operational status.
+- **ALWAYS use graph tools before modifying code** — check callers, impact, and explore related symbols first. Never edit code you don't understand.
 
 ${personality ? '## Personality\n' + personality : ''}
 
@@ -116,9 +126,10 @@ ${personality ? '## Personality\n' + personality : ''}
 1. Load CONSTITUTION.toon — hard rules
 2. Load your MEMORY.toon — persistent knowledge
 3. Load ENGINE.toon — system architecture
-4. Execute task
-5. Update SESSION.md
-6. Diana postmortem if failure
+4. Query graph tools for architecture context (toon_graph_explore, toon_graph_callers)
+5. Execute task
+6. Update SESSION.md
+7. Diana postmortem if failure
 `
 }
 

@@ -2,7 +2,7 @@
 // One command to rule them all: npx toongine init
 // Auto-detects project state, installs tools, builds graph, starts watchers.
 
-import { existsSync, mkdirSync, readdirSync, statSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, statSync, copyFileSync } from 'fs'
 import { join } from 'path'
 import { UnifiedGraph, createUnifiedGraph } from './unified-graph'
 import { ingestAll } from './ingesters/index'
@@ -29,10 +29,35 @@ export function activate(projectRoot: string): ActivationReport {
   const toonDir = join(projectRoot, '.toon')
   const graphDir = join(toonDir, 'graph')
   const toolsDir = join(toonDir, 'tools')
+  const hermesDir = join(toonDir, 'hermes')
 
   if (!existsSync(toonDir)) mkdirSync(toonDir, { recursive: true })
   if (!existsSync(graphDir)) mkdirSync(graphDir, { recursive: true })
   if (!existsSync(toolsDir)) mkdirSync(toolsDir, { recursive: true })
+  if (!existsSync(hermesDir)) mkdirSync(hermesDir, { recursive: true })
+
+  // ─── 1a. Deploy MCP server into .toon/hermes/ ─────────────────────────
+  const mcpDest = join(hermesDir, 'mcp-server.py')
+  if (!existsSync(mcpDest)) {
+    // Try multiple source locations (dev vs npm-installed)
+    const sources = [
+      join(projectRoot, 'src', 'toon', 'v4', 'mcp-server.py'),
+      join(projectRoot, 'node_modules', 'toongine', 'dist', 'toon', 'v4', 'mcp-server.py'),
+    ]
+    for (const src of sources) {
+      if (existsSync(src)) {
+        try {
+          copyFileSync(src, mcpDest)
+          // Make executable
+          const { chmodSync } = require('fs')
+          try { chmodSync(mcpDest, 0o755) } catch {}
+        } catch (err: any) {
+          errors.push(`MCP server deploy failed: ${err.message}`)
+        }
+        break
+      }
+    }
+  }
 
   // ─── 2. Detect project state ───────────────────────────────────────────
   const isEmpty = isProjectEmpty(projectRoot)
