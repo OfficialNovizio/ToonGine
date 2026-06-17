@@ -1,7 +1,8 @@
 "use strict";
 // src/toon/index.ts — TOON public API re-exports
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.expand = exports.storeForExpand = exports.injectDelta = exports.stratify = exports.formatTopN = exports.formatStatHeader = exports.summarize = exports.docStats = exports.getHumanPath = exports.getToonPath = exports.readDocForHuman = exports.readDocsForLLM = exports.readDoc = exports.writeMany = exports.deleteFile = exports.writeFile = exports.resolverStats = exports.clearResolveCache = exports.resolveMany = exports.resolve = exports.bpeDecode = exports.bpeEncode = exports.trainBPE = exports.stem = exports.createEngine = exports.compile = exports.strip = exports.resetAllDeltas = exports.resetDelta = exports.formatDeltaForLLM = exports.computeDelta = exports.getOrCreateState = exports.buildSystemBlock = exports.matchTemplate = exports.compressDecision = exports.dictToLine = exports.buildDictionary = exports.compress = exports.SCHEMAS = exports.toon = void 0;
+exports.ingestCodegraph = exports.ingestGraphify = exports.ingestCodeReviewGraph = exports.ingestAll = exports.stableHash = exports.nodeId = exports.SQL = exports.UNIFIED_SCHEMA = exports.createUnifiedGraph = exports.UnifiedGraph = exports.expand = exports.storeForExpand = exports.injectDelta = exports.stratify = exports.formatTopN = exports.formatStatHeader = exports.summarize = exports.docStats = exports.getHumanPath = exports.getToonPath = exports.readDocForHuman = exports.readDocsForLLM = exports.readDoc = exports.writeMany = exports.deleteFile = exports.writeFile = exports.resolverStats = exports.clearResolveCache = exports.resolveMany = exports.resolve = exports.bpeDecode = exports.bpeEncode = exports.trainBPE = exports.stem = exports.createEngine = exports.compile = exports.strip = exports.resetAllDeltas = exports.resetDelta = exports.formatDeltaForLLM = exports.computeDelta = exports.getOrCreateState = exports.buildSystemBlock = exports.matchTemplate = exports.compressDecision = exports.dictToLine = exports.buildDictionary = exports.compress = exports.SCHEMAS = exports.toon = void 0;
+exports.GRAPH_MCP_TOOLS = exports.createGraphGateway = exports.HermesGraphGateway = exports.getWatcherStatus = exports.stopAllWatchers = exports.startWatcher = exports.ensureAllTools = exports.installCodegraph = exports.detectTools = exports.deactivate = exports.activate = exports.formatContextForLLM = exports.buildAgentContext = exports.createV4Engine = exports.V4Engine = void 0;
 // ─── Core TOON ───────────────────────────────────────────────────────────────
 var toon_1 = require("./toon");
 Object.defineProperty(exports, "toon", { enumerable: true, get: function () { return toon_1.toon; } });
@@ -61,4 +62,40 @@ Object.defineProperty(exports, "stratify", { enumerable: true, get: function () 
 Object.defineProperty(exports, "injectDelta", { enumerable: true, get: function () { return stratify_1.injectDelta; } });
 Object.defineProperty(exports, "storeForExpand", { enumerable: true, get: function () { return stratify_1.storeForExpand; } });
 Object.defineProperty(exports, "expand", { enumerable: true, get: function () { return stratify_1.expand; } });
+// ─── v4 Graph Intelligence Bridge ─────────────────────────────────────────
+var unified_graph_1 = require("./v4/unified-graph");
+Object.defineProperty(exports, "UnifiedGraph", { enumerable: true, get: function () { return unified_graph_1.UnifiedGraph; } });
+Object.defineProperty(exports, "createUnifiedGraph", { enumerable: true, get: function () { return unified_graph_1.createUnifiedGraph; } });
+var unified_schema_1 = require("./v4/unified-schema");
+Object.defineProperty(exports, "UNIFIED_SCHEMA", { enumerable: true, get: function () { return unified_schema_1.UNIFIED_SCHEMA; } });
+Object.defineProperty(exports, "SQL", { enumerable: true, get: function () { return unified_schema_1.SQL; } });
+var bridge_types_1 = require("./v4/bridge-types");
+Object.defineProperty(exports, "nodeId", { enumerable: true, get: function () { return bridge_types_1.nodeId; } });
+Object.defineProperty(exports, "stableHash", { enumerable: true, get: function () { return bridge_types_1.stableHash; } });
+var index_1 = require("./v4/ingesters/index");
+Object.defineProperty(exports, "ingestAll", { enumerable: true, get: function () { return index_1.ingestAll; } });
+Object.defineProperty(exports, "ingestCodeReviewGraph", { enumerable: true, get: function () { return index_1.ingestCodeReviewGraph; } });
+Object.defineProperty(exports, "ingestGraphify", { enumerable: true, get: function () { return index_1.ingestGraphify; } });
+Object.defineProperty(exports, "ingestCodegraph", { enumerable: true, get: function () { return index_1.ingestCodegraph; } });
+var engine_2 = require("./v4/engine");
+Object.defineProperty(exports, "V4Engine", { enumerable: true, get: function () { return engine_2.V4Engine; } });
+Object.defineProperty(exports, "createV4Engine", { enumerable: true, get: function () { return engine_2.createV4Engine; } });
+var context_builder_1 = require("./v4/context-builder");
+Object.defineProperty(exports, "buildAgentContext", { enumerable: true, get: function () { return context_builder_1.buildAgentContext; } });
+Object.defineProperty(exports, "formatContextForLLM", { enumerable: true, get: function () { return context_builder_1.formatContextForLLM; } });
+var auto_activate_1 = require("./v4/auto-activate");
+Object.defineProperty(exports, "activate", { enumerable: true, get: function () { return auto_activate_1.activate; } });
+Object.defineProperty(exports, "deactivate", { enumerable: true, get: function () { return auto_activate_1.deactivate; } });
+var tool_installer_1 = require("./v4/tool-installer");
+Object.defineProperty(exports, "detectTools", { enumerable: true, get: function () { return tool_installer_1.detectTools; } });
+Object.defineProperty(exports, "installCodegraph", { enumerable: true, get: function () { return tool_installer_1.installCodegraph; } });
+Object.defineProperty(exports, "ensureAllTools", { enumerable: true, get: function () { return tool_installer_1.ensureAllTools; } });
+var watcher_1 = require("./v4/watcher");
+Object.defineProperty(exports, "startWatcher", { enumerable: true, get: function () { return watcher_1.startWatcher; } });
+Object.defineProperty(exports, "stopAllWatchers", { enumerable: true, get: function () { return watcher_1.stopAllWatchers; } });
+Object.defineProperty(exports, "getWatcherStatus", { enumerable: true, get: function () { return watcher_1.getWatcherStatus; } });
+var hermes_gateway_1 = require("./v4/hermes-gateway");
+Object.defineProperty(exports, "HermesGraphGateway", { enumerable: true, get: function () { return hermes_gateway_1.HermesGraphGateway; } });
+Object.defineProperty(exports, "createGraphGateway", { enumerable: true, get: function () { return hermes_gateway_1.createGraphGateway; } });
+Object.defineProperty(exports, "GRAPH_MCP_TOOLS", { enumerable: true, get: function () { return hermes_gateway_1.GRAPH_MCP_TOOLS; } });
 //# sourceMappingURL=index.js.map

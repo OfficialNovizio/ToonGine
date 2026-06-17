@@ -21,4 +21,21 @@ export { readDoc, readDocsForLLM, readDocForHuman, getToonPath, getHumanPath, do
 export type { DualDocStats } from './v3/dual-docs';
 export { summarize, formatStatHeader, formatTopN, stratify, injectDelta, storeForExpand, expand } from './v4/stratify';
 export type { NumericStats, StringStats, StatProfile, StratifiedPayload } from './v4/stratify';
+export { UnifiedGraph, createUnifiedGraph } from './v4/unified-graph';
+export { UNIFIED_SCHEMA, SQL } from './v4/unified-schema';
+export { nodeId, stableHash } from './v4/bridge-types';
+export type { UnifiedNode, UnifiedEdge, UnifiedGraphStats, IngestionResult, BridgeConfig, MCPToolDef } from './v4/bridge-types';
+export { ingestAll, ingestCodeReviewGraph, ingestGraphify, ingestCodegraph } from './v4/ingesters/index';
+export type { FullIngestionReport } from './v4/ingesters/index';
+export { V4Engine, createV4Engine } from './v4/engine';
+export type { V4EngineConfig, V4AgentContext } from './v4/engine';
+export { buildAgentContext, formatContextForLLM } from './v4/context-builder';
+export type { AgentContextRequest, GraphContextPayload } from './v4/context-builder';
+export { activate, deactivate } from './v4/auto-activate';
+export type { ActivationReport } from './v4/auto-activate';
+export { detectTools, installCodegraph, ensureAllTools } from './v4/tool-installer';
+export type { ToolStatus } from './v4/tool-installer';
+export { startWatcher, stopAllWatchers, getWatcherStatus } from './v4/watcher';
+export type { WatcherStatus } from './v4/watcher';
+export { HermesGraphGateway, createGraphGateway, GRAPH_MCP_TOOLS } from './v4/hermes-gateway';
 //# sourceMappingURL=index.d.ts.map
