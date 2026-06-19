@@ -225,10 +225,22 @@ export interface ApiHealthEntry {
 }
 
 export interface IssueEntry {
-  id: number; repo_id: string; severity: number; source: string
-  title: string; detail: string; resolved: boolean
-  resolution_time_h: number | null
-  opened_at: string; resolved_at: string | null
+  id: number; repo_id: string; priority: number; category: string; source: string
+  title: string; detail: string; file_path: string | null; line_number: number | null
+  status: 'open' | 'in_progress' | 'resolved' | 'wontfix'
+  severity: number; impact_points: number; effort_minutes: number
+  assigned_to: string | null
+  created_at: string; updated_at: string; resolved_at: string | null
+}
+
+export interface ToonHealthEntry {
+  id: number; repo_id: string; sampled_at: string
+  files_cached: number; cache_size_bytes: number
+  graph_nodes: number; graph_edges: number; graph_size_bytes: number
+  total_docs: number; total_files: number; toon_dir_size_bytes: number
+  agents_with_skills: number; total_skills: number; avg_skills_per_agent: number
+  cache_stale: boolean; graph_orphaned: boolean; compression_ratio: number
+  compile_errors: number; graph_errors: number
 }
 
 export interface HealthEvent {
@@ -272,12 +284,21 @@ export async function getApiHealth(limit = 200): Promise<ApiHealthEntry[]> {
   })
 }
 
-/** Get open issues, ordered by severity. */
+/** Get open issues, ordered by priority. */
 export async function getIssues(limit = 20): Promise<IssueEntry[]> {
   return sf<IssueEntry>('toongine_issues', {
     repo_id: `eq.${resolveRepo()}`,
-    resolved: 'eq.false',
-    order: 'severity.asc,opened_at.desc',
+    status: 'eq.open',
+    order: 'priority.asc,created_at.desc',
+    limit: String(limit),
+  })
+}
+
+/** Get TOON compression health data. */
+export async function getToonHealth(limit = 30): Promise<ToonHealthEntry[]> {
+  return sf<ToonHealthEntry>('toongine_toon_health', {
+    repo_id: `eq.${resolveRepo()}`,
+    order: 'sampled_at.desc',
     limit: String(limit),
   })
 }
@@ -323,30 +344,44 @@ export async function getHealthScore(): Promise<HealthScore> {
     }
   } catch { apiScore = 99 }
 
-  // TOON: from snapshots efficiency
-  const toonSnaps = await sf<Snapshot>('toongine_snapshots', {
-    repo_id: `eq.${resolveRepo()}`,
-    granularity: 'eq.hour',
-    order: 'slot.asc',
-    limit: '24',
-  })
-  const toonScore = toonSnaps.length > 0
-    ? toonSnaps.reduce((s, sn) => s + sn.efficiency_pct, 0) / toonSnaps.length
-    : 99.97
+  // TOON: prefer real health data, fallback to snapshot efficiency
+  const toonHealth = await getToonHealth(1)
+  let toonScore = 99.97
+  if (toonHealth.length > 0) {
+    const latest = toonHealth[0]
+    toonScore = Math.round(latest.compression_ratio * 100)
+    if (latest.cache_stale) toonScore -= 5
+    if (latest.graph_orphaned) toonScore -= 10
+    if (latest.compile_errors > 0) toonScore -= 5
+    if (latest.graph_errors > 0) toonScore -= 5
+    toonScore = Math.max(0, toonScore)
+  } else {
+    // Fallback: use snapshot efficiency
+    const toonSnaps = await sf<Snapshot>('toongine_snapshots', {
+      repo_id: `eq.${resolveRepo()}`,
+      granularity: 'eq.hour',
+      order: 'slot.asc',
+      limit: '24',
+    })
+    toonScore = toonSnaps.length > 0
+      ? toonSnaps.reduce((s, sn) => s + sn.efficiency_pct, 0) / toonSnaps.length
+      : 99.97
+  }
 
-  // Issues: 100 - (critical*15) - (high*8) - (medium*3)
-  const openIssues = issues.filter(i => !i.resolved)
+  // Issues: 100 - (P0*15) - (P1*8) - (P2*3)
+  const openIssues = issues.filter(i => i.status === 'open')
   let issuePenalty = 0
   for (const i of openIssues) {
-    if (i.severity === 1) issuePenalty += 15
-    else if (i.severity === 2) issuePenalty += 8
-    else if (i.severity === 3) issuePenalty += 3
+    if (i.priority === 0) issuePenalty += 15
+    else if (i.priority === 1) issuePenalty += 8
+    else if (i.priority === 2) issuePenalty += 3
+    else issuePenalty += 1
   }
   const issuesScore = Math.max(0, 100 - issuePenalty)
 
   // Weighted composite
   const score = Math.round(
-    codebaseScore * 0.30 + apiScore * 0.30 + toonScore * 0.25 + issuesScore * 0.15
+    codebaseScore * 0.25 + apiScore * 0.25 + toonScore * 0.25 + issuesScore * 0.25
   )
 
   // Trend: compare snapshots[0] vs snapshots[-1] via slope
@@ -363,8 +398,8 @@ export async function getHealthScore(): Promise<HealthScore> {
 
   // Top insight
   let top_insight = 'All systems nominal'
-  if (openIssues.filter(i => i.severity <= 2).length > 0) {
-    top_insight = `${openIssues.filter(i => i.severity <= 2).length} issues need attention`
+  if (openIssues.filter(i => i.priority <= 1).length > 0) {
+    top_insight = `${openIssues.filter(i => i.priority <= 1).length} issues need attention`
   }
   if (codebaseScore < 80) top_insight = 'Codebase health needs attention'
   if (apiScore < 95) top_insight = 'API error rate elevated'
