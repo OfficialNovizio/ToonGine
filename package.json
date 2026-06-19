@@ -42,7 +42,12 @@
     "./toon/v4/auto-activate": "./dist/toon/v4/auto-activate.js",
     "./toon/v4/tool-installer": "./dist/toon/v4/tool-installer.js",
     "./toon/v4/watcher": "./dist/toon/v4/watcher.js",
-    "./toon/v4/hermes-gateway": "./dist/toon/v4/hermes-gateway.js"
+    "./toon/v4/hermes-gateway": "./dist/toon/v4/hermes-gateway.js",
+    "./plugins/supabase": {
+      "types": "./dist/plugins/supabase/index.d.ts",
+      "import": "./dist/plugins/supabase/index.js",
+      "require": "./dist/plugins/supabase/index.js"
+    }
   },
   "bin": {
     "toongine": "./cli/toongine.js"
