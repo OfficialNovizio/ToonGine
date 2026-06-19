@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usePolling } from './hooks/usePolling';
 import { useWebSocket } from './hooks/useWebSocket';
-import TokenIntel from './pages/TokenIntel';
+import TokenBurn from './pages/TokenBurn';
 import ProjectHealth from './pages/ProjectHealth';
 
 /* ─── Design tokens ─── */
@@ -663,7 +663,7 @@ export default function App() {
         {tab === 'agents' && <AgentsPage />}
         {tab === 'toon' && <ToonPage />}
         {tab === 'cost' && <CostPage />}
-        {tab === 'tokenburn' && <TokenIntel />}
+        {tab === 'tokenburn' && <TokenBurn />}
         {tab === 'health' && <ProjectHealth />}
         {tab === 'simulator' && <SimulatorPage />}
         {tab === 'system' && <SystemPage />}

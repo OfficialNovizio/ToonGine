@@ -18,12 +18,41 @@ function activate(projectRoot) {
     const toonDir = (0, path_1.join)(projectRoot, '.toon');
     const graphDir = (0, path_1.join)(toonDir, 'graph');
     const toolsDir = (0, path_1.join)(toonDir, 'tools');
+    const hermesDir = (0, path_1.join)(toonDir, 'hermes');
     if (!(0, fs_1.existsSync)(toonDir))
         (0, fs_1.mkdirSync)(toonDir, { recursive: true });
     if (!(0, fs_1.existsSync)(graphDir))
         (0, fs_1.mkdirSync)(graphDir, { recursive: true });
     if (!(0, fs_1.existsSync)(toolsDir))
         (0, fs_1.mkdirSync)(toolsDir, { recursive: true });
+    if (!(0, fs_1.existsSync)(hermesDir))
+        (0, fs_1.mkdirSync)(hermesDir, { recursive: true });
+    // ─── 1a. Deploy MCP server into .toon/hermes/ ─────────────────────────
+    const mcpDest = (0, path_1.join)(hermesDir, 'mcp-server.py');
+    if (!(0, fs_1.existsSync)(mcpDest)) {
+        // Try multiple source locations (dev vs npm-installed)
+        const sources = [
+            (0, path_1.join)(projectRoot, 'src', 'toon', 'v4', 'mcp-server.py'),
+            (0, path_1.join)(projectRoot, 'node_modules', 'toongine', 'dist', 'toon', 'v4', 'mcp-server.py'),
+        ];
+        for (const src of sources) {
+            if ((0, fs_1.existsSync)(src)) {
+                try {
+                    (0, fs_1.copyFileSync)(src, mcpDest);
+                    // Make executable
+                    const { chmodSync } = require('fs');
+                    try {
+                        chmodSync(mcpDest, 0o755);
+                    }
+                    catch { }
+                }
+                catch (err) {
+                    errors.push(`MCP server deploy failed: ${err.message}`);
+                }
+                break;
+            }
+        }
+    }
     // ─── 2. Detect project state ───────────────────────────────────────────
     const isEmpty = isProjectEmpty(projectRoot);
     // ─── 3. Install/verify tools ───────────────────────────────────────────

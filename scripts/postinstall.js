@@ -226,6 +226,49 @@ print('OK')
   }
 
   console.log('  ✅ toongine auto-configuration complete!\n')
+
+  // ── Register project in ToonGine Supabase (Token Burn Engine) ─────
+  try {
+    const supabaseUrl = 'https://mcejxdjrwzjxafciuely.supabase.co'
+    const supabaseKey = process.env.TOONGINE_SUPABASE_KEY || ''
+
+    // Detect repo from git remote
+    let repoId = 'unknown/unknown'
+    try {
+      const remote = execSync('git remote get-url origin', { encoding: 'utf-8', timeout: 3000 }).trim()
+      const match = remote.match(/[:/]([^/]+)\/([^/]+?)(?:\.git)?$/)
+      if (match) repoId = `${match[1]}/${match[2]}`
+    } catch {}
+
+    const [owner, name] = repoId.split('/')
+
+    // Write .toongine.json for the plugin
+    const cfg = { repo: repoId, supabase_url: supabaseUrl, created_at: new Date().toISOString() }
+    fs.writeFileSync(path.join(cwd, '.toongine.json'), JSON.stringify(cfg, null, 2))
+    console.log(`  📋 Project registered: ${repoId}`)
+
+    // Upsert into Supabase
+    if (supabaseKey && repoId !== 'unknown/unknown') {
+      const https = require('https')
+      const payload = JSON.stringify({ repo_id: repoId, repo_name: name, owner, last_active_at: new Date().toISOString() })
+      const req = https.request({
+        hostname: 'mcejxdjrwzjxafciuely.supabase.co',
+        path: '/rest/v1/toongine_projects?on_conflict=repo_id',
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates',
+          'Content-Length': Buffer.byteLength(payload),
+        },
+      }, (res) => {
+        if (res.statusCode === 201 || res.statusCode === 200) console.log('  🗄️  Synced to ToonGine Supabase')
+      })
+      req.write(payload)
+      req.end()
+    }
+  } catch {}
+
+  console.log('')
 } catch (e) {
   console.log(`  ⚠️  Auto-configuration skipped: ${e.message}`)
   console.log('  Run manually: npx toongine integrate\n')
