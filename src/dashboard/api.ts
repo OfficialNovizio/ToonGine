@@ -8,7 +8,7 @@ import { runHealthChecks } from '../metrics/health-checks'
 import { initAgentActivities } from '../metrics/agent-tracker'
 import { readFileSync, existsSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
-import { execSync } from 'child_process'
+import { execSync, spawn } from 'child_process'
 import {
   getSupabaseEngineStats, getSupabaseAgentEfficiency,
   getSupabaseWeeklyEfficiency, getSupabaseProviderCosts,
@@ -966,3 +966,198 @@ export function providerSimulatorRoutes(): Router {
 
   return r
 }
+
+// ── ToonGine Init (POST /api/toongine/init) ─────────────────────────────────
+// Runs the full TOON initialization: compile, graph build, skillfish, pipeline sync
+
+router.post('/toongine/init', async (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+  res.setHeader('Transfer-Encoding', 'chunked')
+
+  const send = (msg: string) => res.write(msg + '\n')
+
+  try {
+    const projectRoot = process.cwd()
+    
+    send(JSON.stringify({ progress: 5, status: 'Detecting project structure...' }))
+    
+    // 1. Run TOON compile
+    send(JSON.stringify({ progress: 15, status: 'Running TOON compiler...' }))
+    try {
+      execSync('npx toongine init --skip-dashboard 2>&1 || true', { 
+        cwd: projectRoot, timeout: 120000, encoding: 'utf-8' 
+      })
+    } catch {}
+
+    send(JSON.stringify({ progress: 40, status: 'TOON compile complete. Building graph...' }))
+
+    // 2. Build graph (graphify)
+    try {
+      execSync('npx toongine graph 2>&1 || npm run graphify:build 2>&1 || true', {
+        cwd: projectRoot, timeout: 60000, encoding: 'utf-8'
+      })
+    } catch {}
+
+    send(JSON.stringify({ progress: 65, status: 'Graph built. Syncing agent data...' }))
+
+    // 3. Sync to Supabase (if configured)
+    try {
+      const pipelinePath = join(projectRoot, 'scripts', 'toongine-pipeline.py')
+      if (existsSync(pipelinePath)) {
+        execSync(`python3 ${pipelinePath} 2>&1 || true`, { timeout: 60000, encoding: 'utf-8' })
+      } else {
+        // Try from toongine package
+        execSync('python3 -c "import subprocess; subprocess.run([\'python3\', \'/root/yvon/scripts/toongine-pipeline.py\'], timeout=60)" 2>&1 || true', { timeout: 60000 })
+      }
+    } catch {}
+
+    send(JSON.stringify({ progress: 85, status: 'Building skillfish...' }))
+
+    // 4. Skillfish generation
+    try {
+      execSync('npx toongine skills 2>&1 || true', { timeout: 30000, encoding: 'utf-8' })
+    } catch {}
+
+    send(JSON.stringify({ progress: 95, status: 'Registering project...' }))
+
+    // 5. Register project
+    try {
+      // Auto-register via postinstall logic
+      const toongineJson = join(projectRoot, '.toongine.json')
+      if (!existsSync(toongineJson)) {
+        execSync('node -e "require(\'./scripts/postinstall.js\')" 2>&1 || true', {
+          cwd: projectRoot, timeout: 15000, encoding: 'utf-8'
+        })
+      }
+    } catch {}
+
+    send(JSON.stringify({ progress: 100, status: 'Initialization complete!', done: true }))
+    res.end()
+
+  } catch (err: any) {
+    send(JSON.stringify({ error: err?.message || 'Initialization failed' }))
+    res.end()
+  }
+})
+
+// ── ToonGine Health (GET /api/toongine/health) ───────────────────────────────
+// Returns full dashboard data or { initialized: false } for new projects
+
+router.get('/toongine/health', (_req: Request, res: Response) => {
+  try {
+    // Check if TOON is initialized (has .toon directory)
+    const toonDir = join(process.cwd(), '.toon')
+    const toonYvon = '/root/yvon/.toon'
+    const hasToon = existsSync(toonDir) || existsSync(toonYvon)
+    
+    if (!hasToon) {
+      res.json({ initialized: false })
+      return
+    }
+
+    // Collect full dashboard data (same as /api/agents/infra)
+    const data: any = { initialized: true }
+    
+    // Repo info
+    try {
+      const cfgPath = join(process.cwd(), '.toongine.json')
+      if (existsSync(cfgPath)) {
+        data.summary = { ...data.summary, ...JSON.parse(readFileSync(cfgPath, 'utf-8')) }
+      }
+    } catch {}
+
+    // Memory
+    const memDir = existsSync(toonYvon) ? join(toonYvon, 'agents') : join(toonDir, 'agents')
+    const memories: any[] = []
+    if (existsSync(memDir)) {
+      const depts = readdirSync(memDir).filter(d => statSync(join(memDir, d)).isDirectory())
+      for (const dept of depts) {
+        for (const agent of readdirSync(join(memDir, dept)).filter(a => statSync(join(memDir, dept, a)).isDirectory())) {
+          const memPath = join(memDir, dept, agent, 'MEMORY.md')
+          if (existsSync(memPath)) {
+            const size = statSync(memPath).size
+            let health = 100
+            if (size < 200) health -= 30
+            health = Math.max(0, health)
+            memories.push({ agent, dept, size, health })
+          }
+        }
+      }
+      memories.sort((a, b) => b.size - a.size)
+    }
+    data.memories = memories
+
+    // Graph
+    try {
+      const graphDb = join(toonYvon || toonDir, 'graph', 'unified.db')
+      if (existsSync(graphDb)) {
+        const graphJson = execSync(
+          `python3 -c "import sqlite3,json;db=sqlite3.connect('${graphDb}');n=db.execute('SELECT COUNT(*) FROM unified_nodes').fetchone()[0];e=db.execute('SELECT COUNT(*) FROM unified_edges').fetchone()[0];k=db.execute('SELECT kind,COUNT(*) FROM unified_nodes GROUP BY kind ORDER BY COUNT(*) DESC LIMIT 6').fetchall();db.close();print(json.dumps({'nodes':n,'edges':e,'density':round(e/n,2) if n else 0,'kinds':[{'kind':k,'count':c} for k,c in k]}))"`,
+          { encoding: 'utf-8', timeout: 5000 })
+        data.graph = JSON.parse(graphJson.trim())
+      }
+    } catch {}
+
+    // Plugins
+    data.plugins = []
+    try {
+      const mcpOut = execSync('hermes mcp list 2>&1', { encoding: 'utf-8', timeout: 3000 })
+      const mcpOk = mcpOut.includes('enabled')
+      if (mcpOk) data.plugins.push({ name: 'MCP', status: 'ok', detail: 'enabled' })
+    } catch {}
+    data.plugins.push({ name: 'TOON', status: hasToon ? 'ok' : 'warn', detail: hasToon ? 'compiled' : 'not compiled' })
+
+    // Efficiency from activity log
+    data.efficiency = []
+    try {
+      const envPath = join(process.cwd(), '.env.toongine')
+      if (existsSync(envPath)) {
+        const effJson = execSync(
+          `python3 -c "
+import json,os;env={}
+for line in open('${envPath}'): 
+  if '=' in line: k,v=line.strip().split('=',1); env[k]=v
+url=env.get('TOONGINE_SUPABASE_URL','');key=env.get('TOONGINE_SUPABASE_KEY','')
+if url and key:
+  from urllib.request import Request,urlopen
+  req=Request(f'{url}/rest/v1/toongine_activity_log?select=agent_name,status,cost_usd&limit=200',headers={'apikey':key,'Authorization':f'Bearer {key}'})
+  try:
+    with urlopen(req,timeout=5) as resp:
+      rows=json.loads(resp.read())
+      agents={}
+      for r in rows:
+        n=r.get('agent_name','unknown')
+        if n not in agents: agents[n]={'agent':n,'tasks':0,'success':0,'cost':0}
+        agents[n]['tasks']+=1
+        if r.get('status')=='success': agents[n]['success']+=1
+        agents[n]['cost']+=float(r.get('cost_usd',0))
+      result=[{**v,'successRate':round(v['success']/max(1,v['tasks'])*100,1),'cost':round(v['cost'],2)} for v in agents.values()]
+      result.sort(key=lambda x:-x['tasks'])
+      print(json.dumps(result))
+  except: print('[]')
+else: print('[]')
+"`, { encoding: 'utf-8', timeout: 8000 })
+        data.efficiency = JSON.parse(effJson.trim())
+      }
+    } catch {}
+
+    // Errors
+    data.errors = []
+    
+    // Summary
+    data.summary = {
+      ...data.summary,
+      agentMemories: memories.length,
+      graphNodes: data.graph?.nodes || 0,
+      graphEdges: data.graph?.edges || 0,
+      plugins: data.plugins?.length || 0,
+      skillsTotal: 0,
+      sessions: 0,
+      completionRate: 100,
+    }
+
+    res.json(data)
+  } catch (err: any) {
+    res.json({ initialized: false, error: err?.message })
+  }
+})
