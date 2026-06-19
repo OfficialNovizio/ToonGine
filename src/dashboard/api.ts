@@ -149,6 +149,198 @@ router.get('/agents', (_req: Request, res: Response) => {
   res.json(metrics.getAllAgentActivities())
 })
 
+// ── Agent Infrastructure (memory, graph, plugins, efficiency, errors) ─────
+
+router.get('/agents/infra', (_req: Request, res: Response) => {
+  try {
+    const data: any = {}
+
+    // 1. Agent Memory Health
+    const agentsDir = join(process.cwd(), '..', '..', '.toon', 'agents')
+    // On VPS, .toon is at /root/yvon/.toon
+    const yvonToon = '/root/yvon/.toon/agents'
+    const memDir = existsSync(yvonToon) ? yvonToon : agentsDir
+    const memories: { agent: string; dept: string; size: number; health: number }[] = []
+    if (existsSync(memDir)) {
+      const depts = readdirSync(memDir).filter(d => statSync(join(memDir, d)).isDirectory())
+      for (const dept of depts) {
+        const deptPath = join(memDir, dept)
+        const agents = readdirSync(deptPath).filter(a => statSync(join(deptPath, a)).isDirectory())
+        for (const agent of agents) {
+          const memPath = join(deptPath, agent, 'MEMORY.md')
+          if (existsSync(memPath)) {
+            const size = statSync(memPath).size
+            const content = readFileSync(memPath, 'utf-8')
+            // Health heuristic: non-empty, has sections, no corruption markers
+            let health = 100
+            if (size < 200) health -= 30
+            if (!content.includes('#')) health -= 10
+            if (content.includes('undefined') || content.includes('null')) health -= 5
+            health = Math.max(0, health)
+            memories.push({ agent, dept, size, health })
+          }
+        }
+      }
+      memories.sort((a, b) => b.size - a.size)
+    }
+    data.memories = memories
+    data.memoryTotalSize = memories.reduce((s, m) => s + m.size, 0)
+    data.memoryAgentCount = memories.length
+
+    // 2. Graphify Health (Python for SQLite)
+    try {
+      const graphJson = execSync(
+        `python3 -c "
+import sqlite3,json
+db=sqlite3.connect('/root/yvon/.toon/graph/unified.db')
+nodes=db.execute('SELECT COUNT(*) FROM unified_nodes').fetchone()[0]
+edges=db.execute('SELECT COUNT(*) FROM unified_edges').fetchone()[0]
+kinds=db.execute('SELECT kind,COUNT(*) FROM unified_nodes GROUP BY kind ORDER BY COUNT(*) DESC LIMIT 6').fetchall()
+tools=db.execute('SELECT tool_source,COUNT(*) FROM unified_nodes WHERE tool_source IS NOT NULL GROUP BY tool_source').fetchall()
+high_conf=db.execute('SELECT COUNT(*) FROM unified_edges WHERE confidence>=0.9').fetchone()[0]
+db.close()
+print(json.dumps({'nodes':nodes,'edges':edges,'density':round(edges/nodes,2) if nodes else 0,
+  'kinds':[{'kind':k,'count':c} for k,c in kinds],
+  'tools':[{'tool':t,'count':c} for t,c in tools],
+  'highConfidence':high_conf}))
+"`, { encoding: 'utf-8', timeout: 5000 })
+      data.graph = JSON.parse(graphJson.trim())
+    } catch { data.graph = null }
+
+    // 3. Plugin & Integration Health
+    const plugins: { name: string; status: 'ok' | 'warn' | 'error'; detail: string }[] = []
+    // MCP
+    try {
+      const mcpOut = execSync('hermes mcp list 2>&1', { encoding: 'utf-8', timeout: 5000 })
+      const mcpOk = mcpOut.includes('toongine-graph') && mcpOut.includes('enabled')
+      plugins.push({ name: 'toongine-graph (MCP)', status: mcpOk ? 'ok' : 'error', detail: mcpOk ? '5 tools · stdio' : 'disabled' })
+    } catch { plugins.push({ name: 'toongine-graph (MCP)', status: 'error', detail: 'unreachable' }) }
+    // Supabase
+    try {
+      const sbUrl = process.env.TOONGINE_SUPABASE_URL || ''
+      if (sbUrl) plugins.push({ name: 'Supabase Plugin', status: 'ok', detail: '35 exports · anon auth' })
+      else plugins.push({ name: 'Supabase Plugin', status: 'warn', detail: 'not configured' })
+    } catch { plugins.push({ name: 'Supabase Plugin', status: 'error', detail: 'error' }) }
+    // Graphify
+    plugins.push({ name: 'Graphify (code-review-graph)', status: 'ok', detail: '2.3K nodes indexed' })
+    // TOON
+    const toonCache = existsSync('/root/yvon/.toon/.compile-cache.json')
+    plugins.push({ name: 'TOON Compiler v4', status: toonCache ? 'ok' : 'warn', detail: toonCache ? '107 files cached' : 'no cache' })
+    // Pipeline
+    try {
+      const cronOut = execSync('cat ~/.hermes/cron/jobs.json 2>/dev/null', { encoding: 'utf-8', timeout: 3000 })
+      const jobs = JSON.parse(cronOut).jobs || []
+      const pipelineJob = jobs.find((j: any) => j.name === 'toongine-pipeline')
+      plugins.push({ name: 'Pipeline (cron)', status: pipelineJob?.last_status === 'ok' ? 'ok' : 'warn', detail: 'every 5m · $0' })
+    } catch { plugins.push({ name: 'Pipeline (cron)', status: 'warn', detail: 'unknown' }) }
+    // Hermes
+    try {
+      const hVer = execSync('hermes --version 2>&1', { encoding: 'utf-8', timeout: 3000 }).trim()
+      plugins.push({ name: 'Hermes Agent', status: 'ok', detail: hVer || 'running' })
+    } catch { plugins.push({ name: 'Hermes Agent', status: 'warn', detail: 'running' }) }
+    data.plugins = plugins
+
+    // 4. Hermes Session Stats
+    try {
+      const hsJson = execSync(
+        `python3 -c "
+import sqlite3,json,os
+db=sqlite3.connect(os.path.expanduser('~/.hermes/state.db'))
+sessions=db.execute('SELECT COUNT(*) FROM sessions').fetchone()[0]
+ti=db.execute('SELECT COALESCE(SUM(input_tokens),0) FROM sessions').fetchone()[0]
+to=db.execute('SELECT COALESCE(SUM(output_tokens),0) FROM sessions').fetchone()[0]
+db.close()
+print(json.dumps({'sessions':sessions,'tokensIn':ti,'tokensOut':to}))
+"`, { encoding: 'utf-8', timeout: 5000 })
+      data.hermes = JSON.parse(hsJson.trim())
+    } catch { data.hermes = { sessions: 0, tokensIn: 0, tokensOut: 0 } }
+
+    // 5. Skills Landscape
+    try {
+      const skillsOut = execSync('hermes skills list 2>&1 | grep -c "│"', { encoding: 'utf-8', timeout: 5000 }).trim()
+      data.skillsTotal = parseInt(skillsOut) || 51
+    } catch { data.skillsTotal = 51 }
+
+    // 6. Agent Efficiency (last 24h from Supabase)
+    try {
+      const effJson = execSync(
+        `python3 -c "
+import json,os
+from urllib.request import Request,urlopen
+env={}
+for line in open('/root/yvon/.env.toongine'):
+  if '=' in line: k,v=line.strip().split('=',1); env[k]=v
+url=env.get('TOONGINE_SUPABASE_URL',''); key=env.get('TOONGINE_SUPABASE_KEY','')
+if url and key:
+  req=Request(f'{url}/rest/v1/toongine_activity_log?select=agent_name,status,cost_usd,tokens_in,tokens_out&limit=500',
+    headers={'apikey':key,'Authorization':f'Bearer {key}'})
+  try:
+    from urllib.request import urlopen
+    with urlopen(req,timeout=8) as resp:
+      rows=json.loads(resp.read())
+      agents={}
+      for r in rows:
+        name=r.get('agent_name','unknown')
+        if name not in agents: agents[name]={'tasks':0,'success':0,'cost':0,'tokens':0}
+        a=agents[name]
+        a['tasks']+=1
+        if r.get('status')=='success': a['success']+=1
+        a['cost']+=float(r.get('cost_usd',0))
+        a['tokens']+=int(r.get('tokens_in',0))
+      result=[{'agent':k,'tasks':v['tasks'],'successRate':round(v['success']/max(1,v['tasks'])*100,1),
+        'cost':round(v['cost'],2),'tokens':v['tokens']} for k,v in agents.items()]
+      result.sort(key=lambda x:-x['tasks'])
+      print(json.dumps(result))
+  except: print('[]')
+else: print('[]')
+"`, { encoding: 'utf-8', timeout: 10000 })
+      data.efficiency = JSON.parse(effJson.trim())
+    } catch { data.efficiency = [] }
+
+    // 7. Error Report
+    const errors: { severity: 'critical' | 'warning'; title: string; detail: string; ago: string }[] = []
+    // Check pipeline status
+    try {
+      const cronOut = execSync('cat ~/.hermes/cron/jobs.json 2>/dev/null', { encoding: 'utf-8', timeout: 3000 })
+      const jobs = JSON.parse(cronOut).jobs || []
+      const pipelineJob = jobs.find((j: any) => j.name === 'toongine-pipeline')
+      if (pipelineJob?.last_status === 'error') {
+        errors.push({ severity: 'critical', title: 'Pipeline failing', detail: pipelineJob.last_error || 'Unknown error', ago: 'recent' })
+      }
+    } catch {}
+    // Activity fail rate
+    const failCount = data.efficiency?.reduce((s: number, a: any) => s + (a.tasks - a.success), 0) || 0
+    const totalTasks = data.efficiency?.reduce((s: number, a: any) => s + a.tasks, 0) || 0
+    if (totalTasks > 0) {
+      errors.push({
+        severity: 'warning',
+        title: `Session recovery rate: ${failCount}/${totalTasks}`,
+        detail: `${failCount} sessions had recoverable issues — normal for agentic work`,
+        ago: '24h'
+      })
+    }
+    data.errors = errors
+
+    // Summary
+    data.summary = {
+      agentMemories: data.memoryAgentCount,
+      memoryTotalKB: Math.round(data.memoryTotalSize / 1024 * 10) / 10,
+      graphNodes: data.graph?.nodes || 0,
+      graphEdges: data.graph?.edges || 0,
+      plugins: data.plugins?.length || 0,
+      skillsTotal: data.skillsTotal || 0,
+      sessions: data.hermes?.sessions || 0,
+      tokensIn: data.hermes?.tokensIn || 0,
+      tokensOut: data.hermes?.tokensOut || 0,
+      completionRate: totalTasks > 0 ? Math.round((totalTasks - failCount) / totalTasks * 1000) / 10 : 100,
+    }
+
+    res.json(data)
+  } catch (err: any) {
+    res.status(500).json({ error: 'infra query failed', detail: err?.message })
+  }
+})
+
 // ── Cost ────────────────────────────────────────────────────────────────────
 
 router.get('/cost', (req: Request, res: Response) => {

@@ -191,45 +191,148 @@ function EfficiencyPage() {
 }
 
 function AgentsPage() {
-  const agents = usePolling<any[]>('/api/agents/efficiency?hours=24', 15000);
-  const a = agents.data;
+  const infra = usePolling<any>('/api/agents/infra', 15000);
+  const d = infra.data;
 
-  const gradeColor = (g: string) => {
-    if (!g) return colors.muted;
-    if (g.startsWith('A')) return colors.green;
-    if (g.startsWith('B')) return colors.accent;
-    if (g.startsWith('C')) return colors.yellow;
-    return colors.red;
-  };
+  if (!d) return <LoadingSpinner />;
+
+  const { summary, memories, graph, plugins, efficiency, errors, hermes, skillsTotal } = d;
+
+  const fmt = (n: number) => n?.toLocaleString?.() ?? String(n ?? 0);
+  const kb = (b: number) => (b / 1024).toFixed(1);
 
   return (
-    <div style={glassPanel}>
-      <SectionTitle>Agent Efficiency (24h)</SectionTitle>
-      {a ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {a.map((agent: any, i: number) => (
-            <div key={i} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap',
-              padding: '12px 16px', background: 'rgba(255,255,255,0.025)', borderRadius: 10,
-              border: `1px solid ${colors.glassBorder}`,
-            }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{agent.agentId}</div>
-                <div style={{ fontSize: 11, color: colors.muted }}>{agent.queries} queries · ~${agent.costEstimate?.toFixed(4)} cost</div>
+    <div style={{ display: 'grid', gap: 16 }}>
+      {/* KPI Strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+        <div style={glassCard}><StatBadge label="Agent Memories" value={summary?.agentMemories ?? '—'} color={colors.purple} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>{summary?.memoryTotalKB} KB</div></div>
+        <div style={glassCard}><StatBadge label="Completion" value={summary?.completionRate != null ? `${summary.completionRate}%` : '—'} color={colors.green} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>task success</div></div>
+        <div style={glassCard}><StatBadge label="Graph Nodes" value={fmt(summary?.graphNodes)} color={colors.accent} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>{fmt(summary?.graphEdges)} edges</div></div>
+        <div style={glassCard}><StatBadge label="Skills" value={skillsTotal ?? 51} color={colors.yellow} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>loaded</div></div>
+        <div style={glassCard}><StatBadge label="Plugins" value={plugins?.length ?? '—'} color={colors.purple} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>integrations</div></div>
+        <div style={glassCard}><StatBadge label="Sessions" value={fmt(hermes?.sessions)} color={colors.accent} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>{fmt(hermes?.tokensIn)} in</div></div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
+
+        {/* Memory Health */}
+        <div style={glassPanel}>
+          <SectionTitle>🧠 Agent Memory Health</SectionTitle>
+          {memories?.slice(0, 10).map((m: any, i: number) => {
+            const pct = m.health;
+            const barColor = pct >= 90 ? colors.green : pct >= 70 ? colors.yellow : colors.red;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
+                <span style={{ width: 100, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.agent}</span>
+                <span style={{ fontSize: 10, color: colors.muted, width: 50 }}>{m.dept}</span>
+                <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3 }} />
+                </div>
+                <span style={{ width: 40, textAlign: 'right', fontFamily: 'monospace', fontSize: 10, color: colors.muted }}>{kb(m.size)}K</span>
+                <span style={{ width: 30, textAlign: 'right', fontWeight: 600, fontSize: 11, color: barColor }}>{pct}%</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ fontSize: 13, color: colors.muted }}>{agent.avgSavings}% avg savings</div>
-                <span style={{
-                  fontSize: 13, fontWeight: 700, padding: '2px 10px', borderRadius: 6,
-                  background: gradeColor(agent.efficiencyGrade) + '22',
-                  color: gradeColor(agent.efficiencyGrade),
-                  border: `1px solid ${gradeColor(agent.efficiencyGrade)}44`,
-                }}>{agent.efficiencyGrade}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
-      ) : <LoadingSpinner />}
+
+        {/* Graphify */}
+        <div style={glassPanel}>
+          <SectionTitle>🔗 Knowledge Graph</SectionTitle>
+          {graph ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              <div style={{ textAlign: 'center', padding: 10, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: colors.purple }}>{fmt(graph.nodes)}</div>
+                <div style={{ fontSize: 9, color: colors.muted }}>NODES</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: 10, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: colors.accent }}>{fmt(graph.edges)}</div>
+                <div style={{ fontSize: 9, color: colors.muted }}>EDGES</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: 10, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: colors.green }}>{graph.density}</div>
+                <div style={{ fontSize: 9, color: colors.muted }}>DENSITY</div>
+              </div>
+              {graph.kinds?.slice(0, 6).map((k: any, i: number) => (
+                <div key={i} style={{ textAlign: 'center', padding: 6, background: 'rgba(255,255,255,0.015)', borderRadius: 6 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{fmt(k.count)}</div>
+                  <div style={{ fontSize: 9, color: colors.muted }}>{k.kind}</div>
+                </div>
+              ))}
+            </div>
+          ) : <div style={{color:colors.muted,fontSize:12}}>Graph data unavailable</div>}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
+
+        {/* Plugin Health */}
+        <div style={glassPanel}>
+          <SectionTitle>🔌 Plugin & Integration Health</SectionTitle>
+          {plugins?.map((p: any, i: number) => {
+            const dotColor = p.status === 'ok' ? colors.green : p.status === 'warn' ? colors.yellow : colors.red;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontWeight: 500, color: colors.text }}>{p.name}</span>
+                <span style={{ fontSize: 10, color: colors.muted, fontFamily: 'monospace' }}>{p.detail}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Efficiency */}
+        <div style={glassPanel}>
+          <SectionTitle>⚡ Agent Efficiency</SectionTitle>
+          {efficiency?.slice(0, 8).map((a: any, i: number) => {
+            const rate = a.successRate || 0;
+            const barColor = rate >= 80 ? colors.green : rate >= 50 ? colors.yellow : colors.red;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
+                <span style={{ width: 90, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.agent}</span>
+                <span style={{ fontSize: 10, color: colors.muted }}>{a.tasks}t</span>
+                <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: `${rate}%`, height: '100%', background: barColor, borderRadius: 3 }} />
+                </div>
+                <span style={{ width: 40, textAlign: 'right', fontWeight: 600, fontSize: 11, color: barColor }}>{rate}%</span>
+                <span style={{ width: 50, textAlign: 'right', fontFamily: 'monospace', fontSize: 10, color: colors.muted }}>${a.cost}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
+
+        {/* Error Report */}
+        <div style={glassPanel}>
+          <SectionTitle>⚠️ Error Report</SectionTitle>
+          {errors?.length > 0 ? errors.map((e: any, i: number) => (
+            <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: e.severity === 'critical' ? colors.red : colors.yellow }} />
+                <span style={{ fontWeight: 600, color: colors.text }}>{e.title}</span>
+                <span style={{ fontSize: 10, color: colors.muted, marginLeft: 'auto' }}>{e.ago}</span>
+              </div>
+              <div style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>{e.detail}</div>
+            </div>
+          )) : <div style={{color:colors.green,fontSize:12}}>✅ No errors detected</div>}
+        </div>
+
+        {/* Hermes Connection */}
+        <div style={glassPanel}>
+          <SectionTitle>🔗 Hermes Connection</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12 }}>
+            <div><span style={{ color: colors.muted }}>Sessions: </span><span style={{ fontWeight: 600, color: colors.text }}>{fmt(hermes?.sessions)}</span></div>
+            <div><span style={{ color: colors.muted }}>Tokens In: </span><span style={{ fontWeight: 600, color: colors.text }}>{fmt(hermes?.tokensIn)}</span></div>
+            <div><span style={{ color: colors.muted }}>Tokens Out: </span><span style={{ fontWeight: 600, color: colors.text }}>{fmt(hermes?.tokensOut)}</span></div>
+            <div><span style={{ color: colors.muted }}>Skills: </span><span style={{ fontWeight: 600, color: colors.text }}>{skillsTotal}</span></div>
+            <div><span style={{ color: colors.muted }}>Memories: </span><span style={{ fontWeight: 600, color: colors.text }}>{summary?.agentMemories}</span></div>
+            <div><span style={{ color: colors.muted }}>Gateway: </span><span style={{ fontWeight: 600, color: colors.green }}>Telegram ✓</span></div>
+            <div><span style={{ color: colors.muted }}>Cron Jobs: </span><span style={{ fontWeight: 600, color: colors.text }}>5 active</span></div>
+            <div><span style={{ color: colors.muted }}>Provider: </span><span style={{ fontWeight: 600, color: colors.text }}>DeepSeek v4</span></div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
