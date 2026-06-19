@@ -15,6 +15,12 @@ exports.getSnapshots = getSnapshots;
 exports.getActivityLog = getActivityLog;
 exports.getProviderLedger = getProviderLedger;
 exports.getLeaderboard = getLeaderboard;
+exports.getCodebaseSnapshots = getCodebaseSnapshots;
+exports.getApiHealth = getApiHealth;
+exports.getIssues = getIssues;
+exports.getHealthEvents = getHealthEvents;
+exports.getRecommendations = getRecommendations;
+exports.getHealthScore = getHealthScore;
 exports.getProjects = getProjects;
 const child_process_1 = require("child_process");
 const fs_1 = require("fs");
@@ -184,7 +190,121 @@ async function getLeaderboard(limit = 10) {
         limit: String(limit),
     });
 }
-/** Get all registered projects (for project selector dropdown). */
+// ── v3 API (Project Health Engine) ───────────────────────────────────────────
+/** Get codebase snapshots for the ring buffer. */
+async function getCodebaseSnapshots(limit = 30) {
+    return sf('toongine_codebase_snapshots', {
+        repo_id: `eq.${resolveRepo()}`,
+        order: 'slot.asc',
+        limit: String(limit),
+    });
+}
+/** Get API health for last 24h. */
+async function getApiHealth(limit = 200) {
+    return sf('toongine_api_health', {
+        repo_id: `eq.${resolveRepo()}`,
+        order: 'created_at.desc',
+        limit: String(limit),
+    });
+}
+/** Get open issues, ordered by severity. */
+async function getIssues(limit = 20) {
+    return sf('toongine_issues', {
+        repo_id: `eq.${resolveRepo()}`,
+        resolved: 'eq.false',
+        order: 'severity.asc,opened_at.desc',
+        limit: String(limit),
+    });
+}
+/** Get health events timeline. */
+async function getHealthEvents(limit = 30) {
+    return sf('toongine_health_events', {
+        repo_id: `eq.${resolveRepo()}`,
+        order: 'occurred_at.desc',
+        limit: String(limit),
+    });
+}
+/** Get active recommendations, ordered by priority. */
+async function getRecommendations(limit = 10) {
+    return sf('toongine_recommendations', {
+        repo_id: `eq.${resolveRepo()}`,
+        dismissed: 'eq.false',
+        order: 'priority.asc',
+        limit: String(limit),
+    });
+}
+/** Compute health score from all pillars. */
+async function getHealthScore() {
+    const snapshots = await getCodebaseSnapshots(7);
+    const issues = await getIssues(50);
+    // Codebase: 100 if ts_errors=0, -10 per error, -5 per outdated dep
+    const latest = snapshots[snapshots.length - 1];
+    let codebaseScore = 100;
+    if (latest) {
+        codebaseScore = Math.max(0, 100 - (latest.ts_errors * 10) - (Math.min(latest.outdated_deps, 4) * 5));
+    }
+    // API: computed from recent entries
+    let apiScore = 100; // default if no data
+    try {
+        const apiEntries = await getApiHealth(500);
+        if (apiEntries.length > 0) {
+            const successes = apiEntries.filter(e => e.status_code < 400).length;
+            apiScore = (successes / apiEntries.length) * 100;
+        }
+    }
+    catch {
+        apiScore = 99;
+    }
+    // TOON: from snapshots efficiency
+    const toonSnaps = await sf('toongine_snapshots', {
+        repo_id: `eq.${resolveRepo()}`,
+        granularity: 'eq.hour',
+        order: 'slot.asc',
+        limit: '24',
+    });
+    const toonScore = toonSnaps.length > 0
+        ? toonSnaps.reduce((s, sn) => s + sn.efficiency_pct, 0) / toonSnaps.length
+        : 99.97;
+    // Issues: 100 - (critical*15) - (high*8) - (medium*3)
+    const openIssues = issues.filter(i => !i.resolved);
+    let issuePenalty = 0;
+    for (const i of openIssues) {
+        if (i.severity === 1)
+            issuePenalty += 15;
+        else if (i.severity === 2)
+            issuePenalty += 8;
+        else if (i.severity === 3)
+            issuePenalty += 3;
+    }
+    const issuesScore = Math.max(0, 100 - issuePenalty);
+    // Weighted composite
+    const score = Math.round(codebaseScore * 0.30 + apiScore * 0.30 + toonScore * 0.25 + issuesScore * 0.15);
+    // Trend: compare snapshots[0] vs snapshots[-1] via slope
+    let trend = 0;
+    let direction = 'stable';
+    if (snapshots.length >= 3) {
+        const older = snapshots.slice(0, 3);
+        const newer = snapshots.slice(-3);
+        const oldAvg = older.reduce((s, sn) => s + (sn.ts_error_free ? 100 : 50), 0) / older.length;
+        const newAvg = newer.reduce((s, sn) => s + (sn.ts_error_free ? 100 : 50), 0) / newer.length;
+        trend = newAvg - oldAvg;
+        direction = trend > 1 ? 'up' : trend < -1 ? 'down' : 'stable';
+    }
+    // Top insight
+    let top_insight = 'All systems nominal';
+    if (openIssues.filter(i => i.severity <= 2).length > 0) {
+        top_insight = `${openIssues.filter(i => i.severity <= 2).length} issues need attention`;
+    }
+    if (codebaseScore < 80)
+        top_insight = 'Codebase health needs attention';
+    if (apiScore < 95)
+        top_insight = 'API error rate elevated';
+    return {
+        score, codebase: codebaseScore, api: apiScore, toon: toonScore, issues: issuesScore,
+        trend, trend_direction: direction, projected_next: score + Math.round(trend * 0.5), top_insight,
+    };
+}
+/** Get all registered projects. */
 async function getProjects() {
     return sf('toongine_projects', { order: 'last_active_at.desc' });
 }

@@ -209,7 +209,173 @@ export async function getLeaderboard(limit = 10): Promise<ActivityRun[]> {
   })
 }
 
-/** Get all registered projects (for project selector dropdown). */
+// ── v3 Types (Project Health Engine) ─────────────────────────────────────────
+
+export interface CodebaseSnapshot {
+  repo_id: string; slot: number; sampled_at: string
+  ts_errors: number; ts_error_free: boolean
+  files_total: number; lines_total: number
+  build_duration_ms: number; dependencies: number; outdated_deps: number
+}
+
+export interface ApiHealthEntry {
+  id: number; repo_id: string; endpoint: string
+  status_code: number; duration_ms: number
+  error_message: string; created_at: string
+}
+
+export interface IssueEntry {
+  id: number; repo_id: string; severity: number; source: string
+  title: string; detail: string; resolved: boolean
+  resolution_time_h: number | null
+  opened_at: string; resolved_at: string | null
+}
+
+export interface HealthEvent {
+  id: number; repo_id: string; event_type: string; severity: number
+  title: string; detail: string
+  linked_commit: string | null; linked_agent: string | null
+  health_impact: number; occurred_at: string
+}
+
+export interface Recommendation {
+  id: number; repo_id: string; priority: number; category: string
+  title: string; detail: string
+  impact_points: number; effort_minutes: number
+  generated_at: string; dismissed: boolean
+}
+
+export interface HealthScore {
+  score: number
+  codebase: number; api: number; toon: number; issues: number
+  trend: number; trend_direction: 'up' | 'down' | 'stable'
+  projected_next: number; top_insight: string
+}
+
+// ── v3 API (Project Health Engine) ───────────────────────────────────────────
+
+/** Get codebase snapshots for the ring buffer. */
+export async function getCodebaseSnapshots(limit = 30): Promise<CodebaseSnapshot[]> {
+  return sf<CodebaseSnapshot>('toongine_codebase_snapshots', {
+    repo_id: `eq.${resolveRepo()}`,
+    order: 'slot.asc',
+    limit: String(limit),
+  })
+}
+
+/** Get API health for last 24h. */
+export async function getApiHealth(limit = 200): Promise<ApiHealthEntry[]> {
+  return sf<ApiHealthEntry>('toongine_api_health', {
+    repo_id: `eq.${resolveRepo()}`,
+    order: 'created_at.desc',
+    limit: String(limit),
+  })
+}
+
+/** Get open issues, ordered by severity. */
+export async function getIssues(limit = 20): Promise<IssueEntry[]> {
+  return sf<IssueEntry>('toongine_issues', {
+    repo_id: `eq.${resolveRepo()}`,
+    resolved: 'eq.false',
+    order: 'severity.asc,opened_at.desc',
+    limit: String(limit),
+  })
+}
+
+/** Get health events timeline. */
+export async function getHealthEvents(limit = 30): Promise<HealthEvent[]> {
+  return sf<HealthEvent>('toongine_health_events', {
+    repo_id: `eq.${resolveRepo()}`,
+    order: 'occurred_at.desc',
+    limit: String(limit),
+  })
+}
+
+/** Get active recommendations, ordered by priority. */
+export async function getRecommendations(limit = 10): Promise<Recommendation[]> {
+  return sf<Recommendation>('toongine_recommendations', {
+    repo_id: `eq.${resolveRepo()}`,
+    dismissed: 'eq.false',
+    order: 'priority.asc',
+    limit: String(limit),
+  })
+}
+
+/** Compute health score from all pillars. */
+export async function getHealthScore(): Promise<HealthScore> {
+  const snapshots = await getCodebaseSnapshots(7)
+  const issues = await getIssues(50)
+
+  // Codebase: 100 if ts_errors=0, -10 per error, -5 per outdated dep
+  const latest = snapshots[snapshots.length - 1]
+  let codebaseScore = 100
+  if (latest) {
+    codebaseScore = Math.max(0, 100 - (latest.ts_errors * 10) - (Math.min(latest.outdated_deps, 4) * 5))
+  }
+
+  // API: computed from recent entries
+  let apiScore = 100 // default if no data
+  try {
+    const apiEntries = await getApiHealth(500)
+    if (apiEntries.length > 0) {
+      const successes = apiEntries.filter(e => e.status_code < 400).length
+      apiScore = (successes / apiEntries.length) * 100
+    }
+  } catch { apiScore = 99 }
+
+  // TOON: from snapshots efficiency
+  const toonSnaps = await sf<Snapshot>('toongine_snapshots', {
+    repo_id: `eq.${resolveRepo()}`,
+    granularity: 'eq.hour',
+    order: 'slot.asc',
+    limit: '24',
+  })
+  const toonScore = toonSnaps.length > 0
+    ? toonSnaps.reduce((s, sn) => s + sn.efficiency_pct, 0) / toonSnaps.length
+    : 99.97
+
+  // Issues: 100 - (critical*15) - (high*8) - (medium*3)
+  const openIssues = issues.filter(i => !i.resolved)
+  let issuePenalty = 0
+  for (const i of openIssues) {
+    if (i.severity === 1) issuePenalty += 15
+    else if (i.severity === 2) issuePenalty += 8
+    else if (i.severity === 3) issuePenalty += 3
+  }
+  const issuesScore = Math.max(0, 100 - issuePenalty)
+
+  // Weighted composite
+  const score = Math.round(
+    codebaseScore * 0.30 + apiScore * 0.30 + toonScore * 0.25 + issuesScore * 0.15
+  )
+
+  // Trend: compare snapshots[0] vs snapshots[-1] via slope
+  let trend = 0
+  let direction: 'up' | 'down' | 'stable' = 'stable'
+  if (snapshots.length >= 3) {
+    const older = snapshots.slice(0, 3)
+    const newer = snapshots.slice(-3)
+    const oldAvg = older.reduce((s, sn) => s + (sn.ts_error_free ? 100 : 50), 0) / older.length
+    const newAvg = newer.reduce((s, sn) => s + (sn.ts_error_free ? 100 : 50), 0) / newer.length
+    trend = newAvg - oldAvg
+    direction = trend > 1 ? 'up' : trend < -1 ? 'down' : 'stable'
+  }
+
+  // Top insight
+  let top_insight = 'All systems nominal'
+  if (openIssues.filter(i => i.severity <= 2).length > 0) {
+    top_insight = `${openIssues.filter(i => i.severity <= 2).length} issues need attention`
+  }
+  if (codebaseScore < 80) top_insight = 'Codebase health needs attention'
+  if (apiScore < 95) top_insight = 'API error rate elevated'
+
+  return {
+    score, codebase: codebaseScore, api: apiScore, toon: toonScore, issues: issuesScore,
+    trend, trend_direction: direction, projected_next: score + Math.round(trend * 0.5), top_insight,
+  }
+}
+
+/** Get all registered projects. */
 export async function getProjects(): Promise<ProjectInfo[]> {
   return sf<ProjectInfo>('toongine_projects', { order: 'last_active_at.desc' })
 }

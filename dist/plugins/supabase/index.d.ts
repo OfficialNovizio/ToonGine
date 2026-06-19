@@ -117,6 +117,86 @@ export declare function getActivityLog(limit?: number): Promise<ActivityRun[]>;
 export declare function getProviderLedger(): Promise<ProviderLedger[]>;
 /** Get cost leaderboard — most expensive tasks (min-heap Top-K). */
 export declare function getLeaderboard(limit?: number): Promise<ActivityRun[]>;
-/** Get all registered projects (for project selector dropdown). */
+export interface CodebaseSnapshot {
+    repo_id: string;
+    slot: number;
+    sampled_at: string;
+    ts_errors: number;
+    ts_error_free: boolean;
+    files_total: number;
+    lines_total: number;
+    build_duration_ms: number;
+    dependencies: number;
+    outdated_deps: number;
+}
+export interface ApiHealthEntry {
+    id: number;
+    repo_id: string;
+    endpoint: string;
+    status_code: number;
+    duration_ms: number;
+    error_message: string;
+    created_at: string;
+}
+export interface IssueEntry {
+    id: number;
+    repo_id: string;
+    severity: number;
+    source: string;
+    title: string;
+    detail: string;
+    resolved: boolean;
+    resolution_time_h: number | null;
+    opened_at: string;
+    resolved_at: string | null;
+}
+export interface HealthEvent {
+    id: number;
+    repo_id: string;
+    event_type: string;
+    severity: number;
+    title: string;
+    detail: string;
+    linked_commit: string | null;
+    linked_agent: string | null;
+    health_impact: number;
+    occurred_at: string;
+}
+export interface Recommendation {
+    id: number;
+    repo_id: string;
+    priority: number;
+    category: string;
+    title: string;
+    detail: string;
+    impact_points: number;
+    effort_minutes: number;
+    generated_at: string;
+    dismissed: boolean;
+}
+export interface HealthScore {
+    score: number;
+    codebase: number;
+    api: number;
+    toon: number;
+    issues: number;
+    trend: number;
+    trend_direction: 'up' | 'down' | 'stable';
+    projected_next: number;
+    top_insight: string;
+}
+/** Get codebase snapshots for the ring buffer. */
+export declare function getCodebaseSnapshots(limit?: number): Promise<CodebaseSnapshot[]>;
+/** Get API health for last 24h. */
+export declare function getApiHealth(limit?: number): Promise<ApiHealthEntry[]>;
+/** Get open issues, ordered by severity. */
+export declare function getIssues(limit?: number): Promise<IssueEntry[]>;
+/** Get health events timeline. */
+export declare function getHealthEvents(limit?: number): Promise<HealthEvent[]>;
+/** Get active recommendations, ordered by priority. */
+export declare function getRecommendations(limit?: number): Promise<Recommendation[]>;
+/** Compute health score from all pillars. */
+export declare function getHealthScore(): Promise<HealthScore>;
+/** Get all registered projects. */
 export declare function getProjects(): Promise<ProjectInfo[]>;
 //# sourceMappingURL=index.d.ts.map

@@ -1,725 +1,387 @@
-import React, { useState } from 'react';
-import { usePolling } from '../hooks/usePolling';
-import { Sparkline } from '../components/Sparkline';
-import { GradedBar } from '../components/GradedBar';
+// src/dashboard/ui/src/pages/ProjectHealth.tsx — Project Health Intelligence Engine
+// YVON OS design ethics: glass-morphism, dark theme, Inter font.
+// DSA: Ring Buffer + Sliding Window + Priority Queue + Linear Regression + Rule Engine
 
-/* ── styles ──────────────────────────────────────────────── */
-const CARD: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: 14,
-  padding: 20,
-  backdropFilter: 'blur(16px)',
-  marginBottom: 20,
-};
+import React, { useState } from 'react'
+import { usePolling } from '../hooks/usePolling'
+import type {
+  CodebaseSnapshot, ApiHealthEntry, IssueEntry,
+  HealthEvent, Recommendation, HealthScore, ProjectInfo,
+} from '../../../../plugins/supabase'
 
-const SECTION_TITLE: React.CSSProperties = {
-  fontSize: 16,
-  fontWeight: 600,
-  color: '#e4e8f0',
-  marginBottom: 16,
-};
-
-const MUTED: React.CSSProperties = {
-  fontSize: 13,
-  color: '#5a6478',
-  textAlign: 'center' as const,
-  padding: '40px 0',
-};
-
-const CENTER: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  minHeight: 200,
-  color: '#5a6478',
-  fontSize: 15,
-};
-
-const TH: React.CSSProperties = {
-  textAlign: 'left' as const,
-  fontSize: 11,
-  fontWeight: 600,
-  color: '#5a6478',
-  textTransform: 'uppercase' as const,
-  letterSpacing: 0.5,
-  padding: '8px 12px',
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
-};
-
-const TD: React.CSSProperties = {
-  fontSize: 13,
-  color: '#e4e8f0',
-  padding: '10px 12px',
-  borderBottom: '1px solid rgba(255,255,255,0.03)',
-};
-
-/* ── design tokens ───────────────────────────────────────── */
+/* ── Design tokens (YVON OS) ───────────────────────────────────── */
 const C = {
-  accent: '#00d4ff',
-  green: '#10b981',
-  yellow: '#f59e0b',
-  red: '#ef4444',
-  purple: '#8b5cf6',
-  text: '#e4e8f0',
-  muted: '#5a6478',
-  glass: 'rgba(255,255,255,0.04)',
-  glassBorder: 'rgba(255,255,255,0.08)',
-};
-
-/* ── grade helpers ───────────────────────────────────────── */
-const gradeColor = (g: string): string => {
-  if (!g) return C.muted;
-  if (g.startsWith('A+')) return '#10b981';
-  if (g.startsWith('A')) return '#00d4ff';
-  if (g.startsWith('B')) return '#f59e0b';
-  return '#ef4444';
-};
-
-const severityColor = (s: string): string => {
-  if (s === 'critical' || s === 'red') return C.red;
-  if (s === 'warning' || s === 'yellow') return C.yellow;
-  return C.green;
-};
-
-const severityIcon = (s: string): string => {
-  if (s === 'critical') return '🔴';
-  if (s === 'warning') return '⚠️';
-  return '🟢';
-};
-
-/* ── types ───────────────────────────────────────────────── */
-interface ToonHealth {
-  avgSavingsPercent: number;
-  grade: string;
-  totalContent: number;
+  accent: '#00d4ff', green: '#10b981', yellow: '#f59e0b', red: '#ef4444',
+  purple: '#8b5cf6', pink: '#ec4899',
+  text: '#e4e8f0', muted: '#5a6478', dim: '#3a3f4a',
+  glass: 'rgba(255,255,255,0.04)', glassBorder: 'rgba(255,255,255,0.08)',
+  bg: '#080c14',
+}
+const CARD: React.CSSProperties = {
+  background: C.glass, border: `1px solid ${C.glassBorder}`,
+  borderRadius: 14, padding: 18, backdropFilter: 'blur(16px)',
+}
+const SECT: React.CSSProperties = {
+  fontSize: 10, fontWeight: 600, color: C.muted,
+  textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 10,
 }
 
-interface BundleHealth {
-  pages: number;
-  buildStatus: string;
-  lastBuildTime: string;
-}
+/* ── Sub-components ────────────────────────────────────────────── */
 
-interface ApiHealth {
-  successRate: number;
-  statusBadges: string[];
-}
-
-interface IssuesSummary {
-  warningCount: number;
-  criticalCount: number;
-}
-
-interface ToonQualityItem {
-  contentType: string;
-  savingsPercent: number;
-  grade: string;
-}
-
-interface MatchQuality {
-  chunksMatched: number;
-  chunksInjected: number;
-  avgQuality: number;
-  l1: number;
-  l2: number;
-  ref: number;
-}
-
-interface CodebaseStructure {
-  lastCompileTime: string;
-  files: number;
-  chunks: number;
-  terms: number;
-  bpe: number;
-  corpusSize: number;
-  compressedSize: number;
-  deltaFiles: number;
-  deltaChunks: number;
-  tscErrors: number;
-}
-
-interface ApiRoute {
-  route: string;
-  calls: number;
-  successRate: number;
-  errors: number;
-}
-
-interface PromptQuality {
-  avgContextSize: number;
-  avgInjectedSize: number;
-  reductionPercent: number;
-  cacheRate: number;
-  bestAgent: string;
-  worstAgent: string;
-}
-
-interface IssueEntry {
-  id: string;
-  timestamp: string;
-  message: string;
-  severity: 'info' | 'warning' | 'critical';
-}
-
-interface DocCoverageItem {
-  path: string;
-  documented: number;
-  total: number;
-  percent: number;
-}
-
-interface ProjectHealthData {
-  toonHealth: ToonHealth;
-  bundleHealth: BundleHealth;
-  apiHealth: ApiHealth;
-  issues: IssuesSummary;
-  toonQuality: ToonQualityItem[];
-  savingsTrend: number[];
-  matchQuality: MatchQuality;
-  codebaseStructure: CodebaseStructure;
-  apiRouteHealth: ApiRoute[];
-  promptQuality: PromptQuality;
-  issuesFeed: IssueEntry[];
-  docCoverage: DocCoverageItem[];
-}
-
-/* ── sub-components ──────────────────────────────────────── */
-
-function TimeRangeSelector({ value, onChange }: {
-  value: string; onChange: (v: '24h' | '7d' | '30d') => void;
+function RepoSelector({ projects, active, onChange }: {
+  projects: ProjectInfo[]; active: string; onChange: (r: string) => void
 }) {
-  const opts: { key: '24h' | '7d' | '30d'; label: string }[] = [
-    { key: '24h', label: '24h' },
-    { key: '7d', label: '7d' },
-    { key: '30d', label: '30d' },
-  ];
+  if (projects.length <= 1) {
+    return <span style={{ fontSize: 11, color: C.muted, fontFamily: 'SF Mono, monospace' }}>{active}</span>
+  }
   return (
-    <div style={{ display: 'flex', gap: 4, marginBottom: 20 }}>
-      {opts.map(o => (
-        <button
-          key={o.key}
-          onClick={() => onChange(o.key)}
-          style={{
-            border: `1px solid ${value === o.key ? C.accent : C.glassBorder}`,
-            background: value === o.key ? C.accent + '22' : C.glass,
-            color: value === o.key ? C.accent : C.muted,
-            borderRadius: 8,
-            padding: '6px 16px',
-            fontSize: 12,
-            fontWeight: value === o.key ? 600 : 400,
-            cursor: 'pointer',
-          }}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
+    <select value={active} onChange={e => onChange(e.target.value)}
+      style={{
+        background: C.glass, border: `1px solid ${C.glassBorder}`, borderRadius: 8,
+        color: C.text, fontSize: 11, padding: '5px 10px',
+        fontFamily: 'SF Mono, monospace', cursor: 'pointer',
+      }}>
+      {projects.map(p => <option key={p.repo_id} value={p.repo_id}>{p.repo_id}</option>)}
+    </select>
+  )
 }
 
-function StatCard({ label, value, sub, color }: {
-  label: string; value: string; sub?: string; color?: string;
-}) {
+function ScoreRing({ score, trend }: { score: number; trend: string }) {
+  const color = score >= 80 ? C.green : score >= 50 ? C.yellow : C.red
+  const deg = (score / 100) * 270
   return (
-    <div style={{ ...CARD, marginBottom: 0, minWidth: 160 }}>
-      <div style={{ fontSize: 12, color: C.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-        {label}
+    <div style={{ textAlign: 'center' }}>
+      <div style={{
+        width: 120, height: 120, borderRadius: '50%', margin: '0 auto 8px',
+        background: `conic-gradient(from 0deg, ${color} 0deg, ${color} ${deg}deg, ${C.glass} ${deg}deg, ${C.glass} 360deg)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 96, height: 96, borderRadius: '50%', background: C.bg,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{ fontSize: 34, fontWeight: 800, color, letterSpacing: -1, lineHeight: 1 }}>{score}</div>
+          <div style={{ fontSize: 10, color, fontWeight: 600, textTransform: 'uppercase' }}>
+            {score >= 80 ? 'Healthy' : score >= 50 ? 'Degraded' : 'Critical'}
+          </div>
+        </div>
       </div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: color || C.text, lineHeight: 1.1 }}>
-        {value}
+      <div style={{ fontSize: 11, color: trend === 'up' ? C.green : trend === 'down' ? C.red : C.muted }}>
+        {trend === 'up' ? '▲' : trend === 'down' ? '▼' : '—'} {trend === 'up' ? 'Improving' : trend === 'down' ? 'Declining' : 'Stable'}
       </div>
-      {sub && <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>{sub}</div>}
     </div>
-  );
+  )
 }
 
-function GradeBadge({ grade }: { grade: string }) {
-  const gc = gradeColor(grade);
+function InsightCard({ type, icon, children }: { type: 'good' | 'warn' | 'crit' | 'info'; icon: string; children: React.ReactNode }) {
+  const colors = { good: C.green, warn: C.yellow, crit: C.red, info: C.accent }
   return (
-    <span style={{
-      fontSize: 13, fontWeight: 700, padding: '2px 10px', borderRadius: 6,
-      background: gc + '22',
-      color: gc,
-      border: `1px solid ${gc}44`,
+    <div style={{
+      padding: '10px 14px', borderRadius: 8, fontSize: 11, lineHeight: 1.5,
+      background: colors[type] + '08', border: `1px solid ${colors[type]}22`,
+      color: colors[type], display: 'flex', alignItems: 'flex-start', gap: 10,
     }}>
-      {grade}
-    </span>
-  );
-}
-
-function ToonQualityBars({ items }: { items: ToonQualityItem[] }) {
-  if (items.length === 0) return <div style={MUTED}>No quality data yet</div>;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {items.map((tq, i) => (
-        <div key={i}>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            fontSize: 13, marginBottom: 4,
-          }}>
-            <span style={{ color: C.text, fontWeight: 500 }}>{tq.contentType}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontWeight: 600, color: gradeColor(tq.grade) }}>
-                {tq.savingsPercent.toFixed(1)}%
-              </span>
-              <GradeBadge grade={tq.grade} />
-            </span>
-          </div>
-          <GradedBar
-            value={tq.savingsPercent}
-            max={100}
-            color={gradeColor(tq.grade)}
-            label=""
-          />
-        </div>
-      ))}
+      <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
+      <div>{children}</div>
     </div>
-  );
+  )
 }
 
-function MatchQualityCard({ mq }: { mq: MatchQuality }) {
+function CodebasePanel({ snapshots }: { snapshots: CodebaseSnapshot[] }) {
+  const latest = snapshots[snapshots.length - 1]
+  const maxErr = Math.max(...snapshots.map(s => s.ts_errors), 1)
   return (
-    <div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: C.accent }}>
-            {mq.chunksMatched.toLocaleString()}
-          </div>
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Chunks Matched</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: C.green }}>
-            {mq.chunksInjected.toLocaleString()}
-          </div>
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Chunks Injected</div>
-        </div>
-      </div>
-      <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>AVERAGE QUALITY: {mq.avgQuality.toFixed(1)}%</div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        {['L1', 'L2', 'REF'].map((tier) => {
-          let val: number;
-          if (tier === 'L1') val = mq.l1;
-          else if (tier === 'L2') val = mq.l2;
-          else val = mq.ref;
-          const pct = mq.chunksMatched > 0 ? (val / mq.chunksMatched) * 100 : 0;
-          const color = tier === 'L1' ? C.green : tier === 'L2' ? C.yellow : C.purple;
+    <div style={CARD}>
+      <div style={SECT}>🧬 Codebase · Last {snapshots.length} Samples</div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 48, marginBottom: 6 }}>
+        {snapshots.map((s, i) => {
+          const h = s.ts_error_free ? 100 : Math.max(20, 100 - (s.ts_errors / maxErr) * 80)
           return (
-            <div key={tier} style={{
-              flex: 1, padding: '8px 12px', borderRadius: 8,
-              background: 'rgba(255,255,255,0.025)',
-              border: `1px solid ${C.glassBorder}`,
-              textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color }}>{val}</div>
-              <div style={{ fontSize: 10, color: C.muted }}>{tier} ({pct.toFixed(0)}%)</div>
-            </div>
-          );
+            <div key={i} style={{
+              flex: 1, height: `${h}%`, borderRadius: '2px 2px 0 0', minHeight: 2,
+              background: s.ts_error_free ? 'rgba(52,211,153,0.6)' : 'rgba(248,113,113,0.6)',
+              transition: 'height 0.3s',
+            }} title={`${s.sampled_at?.slice(0,10)}: ${s.ts_errors} errors`} />
+          )
         })}
       </div>
-    </div>
-  );
-}
-
-function CodebaseView({ cs }: { cs: CodebaseStructure }) {
-  const compressionRatio = cs.corpusSize > 0
-    ? ((cs.corpusSize - cs.compressedSize) / cs.corpusSize * 100).toFixed(1)
-    : '0';
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-      <div style={{ textAlign: 'center', padding: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: C.accent }}>{cs.files.toLocaleString()}</div>
-        <div style={{ fontSize: 11, color: C.muted }}>Files</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: C.dim }}>
+        {snapshots.slice(0, 7).map((s, i) => <span key={i}>{s.sampled_at?.slice(5,10)}</span>)}
       </div>
-      <div style={{ textAlign: 'center', padding: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: C.purple }}>{cs.chunks.toLocaleString()}</div>
-        <div style={{ fontSize: 11, color: C.muted }}>Chunks</div>
-      </div>
-      <div style={{ textAlign: 'center', padding: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{cs.terms.toLocaleString()}</div>
-        <div style={{ fontSize: 11, color: C.muted }}>Terms</div>
-      </div>
-      <div style={{ textAlign: 'center', padding: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: C.accent }}>{cs.bpe.toLocaleString()}</div>
-        <div style={{ fontSize: 11, color: C.muted }}>BPE Tokens</div>
-      </div>
-      <div style={{ textAlign: 'center', padding: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: C.yellow }}>
-          {(cs.corpusSize / 1024).toFixed(0)}KB
-        </div>
-        <div style={{ fontSize: 11, color: C.muted }}>Corpus</div>
-      </div>
-      <div style={{ textAlign: 'center', padding: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: C.green }}>
-          {(cs.compressedSize / 1024).toFixed(0)}KB
-        </div>
-        <div style={{ fontSize: 11, color: C.muted }}>Compressed ({compressionRatio}%)</div>
-      </div>
-      <div style={{ textAlign: 'center', padding: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: cs.tscErrors > 0 ? C.red : C.green }}>
-          {cs.tscErrors}
-        </div>
-        <div style={{ fontSize: 11, color: C.muted }}>TSC Errors</div>
-      </div>
-      <div style={{ textAlign: 'center', padding: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: C.accent }}>
-          +{cs.deltaFiles} files
-        </div>
-        <div style={{ fontSize: 11, color: C.muted }}>Delta ({cs.deltaChunks} chunks)</div>
-      </div>
-    </div>
-  );
-}
-
-function ApiRouteHealthTable({ routes }: { routes: ApiRoute[] }) {
-  if (routes.length === 0) return <div style={MUTED}>No route data yet</div>;
-
-  const sorted = [...routes].sort((a, b) => b.errors - a.errors);
-
-  return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-      <thead>
-        <tr>
-          <th style={TH}>Route</th>
-          <th style={{ ...TH, textAlign: 'right' }}>Calls</th>
-          <th style={{ ...TH, textAlign: 'right' }}>Success</th>
-          <th style={{ ...TH, textAlign: 'right' }}>Errors</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sorted.map((r, i) => (
-          <tr key={i}>
-            <td style={{ ...TD, fontFamily: 'monospace', fontSize: 12 }}>{r.route}</td>
-            <td style={{ ...TD, textAlign: 'right' }}>{r.calls}</td>
-            <td style={{
-              ...TD, textAlign: 'right',
-              color: r.successRate >= 95 ? C.green : r.successRate >= 80 ? C.yellow : C.red,
-              fontWeight: 600,
-            }}>
-              {r.successRate.toFixed(1)}%
-            </td>
-            <td style={{
-              ...TD, textAlign: 'right',
-              color: r.errors > 0 ? C.red : C.muted,
-              fontWeight: r.errors > 0 ? 600 : 400,
-            }}>
-              {r.errors}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function PromptQualityCard({ pq }: { pq: PromptQuality }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-      <div style={{ textAlign: 'center', padding: 12, background: 'rgba(255,255,255,0.025)', borderRadius: 8 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: C.accent }}>
-          {(pq.avgContextSize / 1024).toFixed(1)}KB
-        </div>
-        <div style={{ fontSize: 11, color: C.muted }}>Avg Context</div>
-      </div>
-      <div style={{ textAlign: 'center', padding: 12, background: 'rgba(255,255,255,0.025)', borderRadius: 8 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: C.green }}>
-          {(pq.avgInjectedSize / 1024).toFixed(1)}KB
-        </div>
-        <div style={{ fontSize: 11, color: C.muted }}>Avg Injected</div>
-      </div>
-      <div style={{ textAlign: 'center', padding: 12, background: 'rgba(255,255,255,0.025)', borderRadius: 8 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: C.purple }}>
-          {pq.reductionPercent.toFixed(1)}%
-        </div>
-        <div style={{ fontSize: 11, color: C.muted }}>Reduction</div>
-      </div>
-      <div style={{ textAlign: 'center', padding: 12, background: 'rgba(255,255,255,0.025)', borderRadius: 8 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: C.yellow }}>
-          {pq.cacheRate.toFixed(1)}%
-        </div>
-        <div style={{ fontSize: 11, color: C.muted }}>Cache Hit Rate</div>
-      </div>
-      <div style={{ gridColumn: '1 / -1', fontSize: 12, color: C.muted, marginTop: 4 }}>
-        <span style={{ color: C.green }}>Best: {pq.bestAgent}</span>
-        {' · '}
-        <span style={{ color: C.red }}>Worst: {pq.worstAgent}</span>
-      </div>
-    </div>
-  );
-}
-
-function IssuesFeed({ issues }: { issues: IssueEntry[] }) {
-  if (issues.length === 0) return <div style={MUTED}>No issues — all clear ✅</div>;
-
-  const sorted = [...issues].sort((a, b) => {
-    const sev = { critical: 0, warning: 1, info: 2 };
-    return (sev[a.severity] ?? 3) - (sev[b.severity] ?? 3);
-  });
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 400, overflowY: 'auto' }}>
-      {sorted.map((iss, i) => {
-        const sc = severityColor(iss.severity);
-        return (
-          <div
-            key={iss.id || i}
-            style={{
-              padding: '10px 14px',
-              background: 'rgba(255,255,255,0.025)',
-              borderRadius: 10,
-              borderLeft: `3px solid ${sc}`,
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
-                {severityIcon(iss.severity)} {iss.message}
-              </span>
-              <span style={{
-                fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const,
-                color: sc, padding: '1px 8px', borderRadius: 4,
-                background: sc + '22',
-              }}>
-                {iss.severity}
-              </span>
-            </div>
-            <div style={{ fontSize: 11, color: C.muted }}>{iss.timestamp}</div>
+      {latest ? (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '3px 0' }}>
+            <span style={{ color: C.muted }}>TypeScript errors</span>
+            <span style={{ color: latest.ts_error_free ? C.green : C.red, fontWeight: 600 }}>{latest.ts_errors}</span>
           </div>
-        );
-      })}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '3px 0' }}>
+            <span style={{ color: C.muted }}>Build</span>
+            <span style={{ color: latest.ts_error_free ? C.green : C.red, fontWeight: 500 }}>{latest.ts_error_free ? 'Clean' : 'Failed'} · {(latest.build_duration_ms / 1000).toFixed(1)}s</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '3px 0' }}>
+            <span style={{ color: C.muted }}>Files</span>
+            <span style={{ color: C.text, fontWeight: 500 }}>{latest.files_total}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '3px 0' }}>
+            <span style={{ color: C.muted }}>Outdated deps</span>
+            <span style={{ color: latest.outdated_deps > 2 ? C.yellow : C.text, fontWeight: 500 }}>{latest.outdated_deps}</span>
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: C.dim, textAlign: 'center', padding: '20px 0' }}>No codebase data yet</div>
+      )}
+      {latest?.ts_error_free && <div style={{ fontSize: 9, color: C.green, marginTop: 6 }}>{snapshots.length} clean samples · streak growing</div>}
     </div>
-  );
+  )
 }
 
-function DocCoverageGrid({ items }: { items: DocCoverageItem[] }) {
-  if (items.length === 0) return <div style={MUTED}>No doc coverage data yet</div>;
-
-  const maxTotal = Math.max(...items.map(d => d.total), 1);
+function ApiPanel({ entries }: { entries: ApiHealthEntry[] }) {
+  const total = entries.length
+  const s200 = entries.filter(e => e.status_code < 400).length
+  const s400 = entries.filter(e => e.status_code >= 400 && e.status_code < 500).length
+  const s500 = entries.filter(e => e.status_code >= 500).length
+  const p95 = entries.length > 0
+    ? entries.map(e => e.duration_ms).sort((a, b) => a - b)[Math.floor(entries.length * 0.95)]
+    : 0
+  const topError = entries.filter(e => e.status_code >= 400).reduce<Record<string, number>>((acc, e) => {
+    acc[e.endpoint] = (acc[e.endpoint] || 0) + 1; return acc
+  }, {})
+  const topEndpoint = Object.entries(topError).sort((a, b) => b[1] - a[1])[0]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {items.map((d, i) => {
-        const pctColor = d.percent >= 80 ? C.green : d.percent >= 50 ? C.yellow : C.red;
-        return (
-          <div
-            key={i}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '10px 14px',
-              background: 'rgba(255,255,255,0.025)',
-              borderRadius: 10,
-              border: `1px solid ${C.glassBorder}`,
-            }}
-          >
-            <span style={{ fontSize: 13, fontWeight: 500, fontFamily: 'monospace', flex: 1 }}>
-              {d.path}
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 90, height: 6, borderRadius: 3,
-                background: 'rgba(255,255,255,0.06)', overflow: 'hidden',
+    <div style={CARD}>
+      <div style={SECT}>🌐 API Health · Last {total} Requests</div>
+      {total > 0 ? (
+        <>
+          <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 8 }}>
+            <div style={{ width: `${(s200/total)*100}%`, background: C.green }} />
+            <div style={{ width: `${(s400/total)*100}%`, background: C.yellow }} />
+            <div style={{ width: `${(s500/total)*100}%`, background: C.red }} />
+          </div>
+          <div style={{ display: 'flex', gap: 14, fontSize: 10, marginBottom: 10 }}>
+            <span style={{ color: C.green }}>● {((s200/total)*100).toFixed(0)}% 2xx</span>
+            <span style={{ color: C.yellow }}>● {((s400/total)*100).toFixed(0)}% 4xx</span>
+            <span style={{ color: C.red }}>● {((s500/total)*100).toFixed(0)}% 5xx</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '2px 0' }}>
+            <span style={{ color: C.muted }}>P95 latency</span><span style={{ color: C.text }}>{p95}ms</span>
+          </div>
+          {topEndpoint && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '2px 0' }}>
+              <span style={{ color: C.muted }}>Top error</span><span style={{ color: C.red, fontSize: 10 }}>{topEndpoint[0]}</span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ fontSize: 11, color: C.dim, textAlign: 'center', padding: '20px 0' }}>No API data yet</div>
+      )}
+    </div>
+  )
+}
+
+function IssuesPanel({ issues }: { issues: IssueEntry[] }) {
+  const sevIcons: Record<number, { icon: string; color: string }> = {
+    1: { icon: '🔴', color: C.red },
+    2: { icon: '🟡', color: C.yellow },
+    3: { icon: '🔵', color: C.accent },
+    4: { icon: '⚪', color: C.dim },
+  }
+  return (
+    <div style={CARD}>
+      <div style={SECT}>🐛 Issues · {issues.length} Open</div>
+      {issues.length > 0 ? (
+        <div>
+          {issues.slice(0, 6).map(i => {
+            const s = sevIcons[i.severity] || sevIcons[4]
+            const age = Math.round((Date.now() - new Date(i.opened_at).getTime()) / 86400000)
+            return (
+              <div key={i.id} style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0',
+                borderBottom: `1px solid ${C.glassBorder}`, fontSize: 11,
               }}>
-                <div style={{
-                  width: `${(d.total / maxTotal) * 100}%`, height: '100%', borderRadius: 3,
-                  background: C.accent, transition: 'width 0.4s ease',
-                }} />
+                <span style={{ fontSize: 13 }}>{s.icon}</span>
+                <span style={{ flex: 1, color: i.severity <= 2 ? C.text : C.muted, fontWeight: i.severity <= 2 ? 500 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.title}</span>
+                <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: C.glass, color: C.muted }}>{i.source}</span>
+                <span style={{ fontSize: 10, color: age > 7 ? C.yellow : C.dim, whiteSpace: 'nowrap' }}>{age}d</span>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: pctColor, minWidth: 40, textAlign: 'right' }}>
-                {d.percent}%
-              </span>
-              <span style={{ fontSize: 11, color: C.muted, minWidth: 80, textAlign: 'right' }}>
-                {d.documented}/{d.total} docs
-              </span>
-            </div>
-          </div>
-        );
-      })}
+            )
+          })}
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: C.green, textAlign: 'center', padding: '20px 0' }}>No open issues 🎉</div>
+      )}
     </div>
-  );
+  )
 }
 
-/* ── main component ──────────────────────────────────────── */
+function RecommendationsPanel({ recs }: { recs: Recommendation[] }) {
+  const priorityStyle: Record<number, { bg: string; color: string }> = {
+    0: { bg: C.red + '20', color: C.red },
+    1: { bg: C.yellow + '20', color: C.yellow },
+    2: { bg: C.accent + '20', color: C.accent },
+  }
+  return (
+    <div style={CARD}>
+      <div style={SECT}>💡 What to Fix First</div>
+      {recs.length > 0 ? (
+        recs.map(r => {
+          const p = priorityStyle[r.priority] || priorityStyle[2]
+          return (
+            <div key={r.id} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
+              borderBottom: `1px solid ${C.glassBorder}`,
+            }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%', background: p.bg, color: p.color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 700, flexShrink: 0,
+              }}>P{r.priority}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: p.color }}>{r.title}</div>
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{r.detail}</div>
+                <div style={{ fontSize: 9, color: C.dim, marginTop: 2 }}>{r.effort_minutes} min · {r.category}</div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>+{r.impact_points.toFixed(1)}</div>
+                <div style={{ fontSize: 9, color: C.dim }}>health pts</div>
+              </div>
+            </div>
+          )
+        })
+      ) : (
+        <div style={{ fontSize: 11, color: C.green, textAlign: 'center', padding: '20px 0' }}>All caught up · No recommendations</div>
+      )}
+    </div>
+  )
+}
+
+function TimelinePanel({ events }: { events: HealthEvent[] }) {
+  const icons: Record<string, { color: string; icon: string }> = {
+    commit: { color: C.accent, icon: '●' },
+    deploy: { color: C.accent, icon: '●' },
+    fix: { color: C.green, icon: '●' },
+    recovery: { color: C.green, icon: '●' },
+    error_spike: { color: C.red, icon: '●' },
+    anomaly: { color: C.yellow, icon: '●' },
+    pulse: { color: C.purple, icon: '●' },
+  }
+  return (
+    <div style={CARD}>
+      <div style={SECT}>📅 Health Timeline</div>
+      {events.length > 0 ? (
+        <div style={{ position: 'relative', paddingLeft: 22, maxHeight: 280, overflowY: 'auto' }}>
+          <div style={{ position: 'absolute', left: 9, top: 8, bottom: 8, width: 1, background: C.glassBorder }} />
+          {events.slice(0, 12).map(e => {
+            const ic = icons[e.event_type] || icons.commit
+            return (
+              <div key={e.id} style={{ position: 'relative', marginBottom: 10, fontSize: 11 }}>
+                <div style={{
+                  position: 'absolute', left: -17, top: 3, width: 8, height: 8, borderRadius: '50%',
+                  background: ic.color,
+                  boxShadow: e.severity >= 2 ? `0 0 5px ${ic.color}40` : 'none',
+                }} />
+                <div style={{ fontSize: 10, color: C.dim }}>{new Date(e.occurred_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                <div style={{ fontWeight: 600, color: ic.color }}>{e.title}</div>
+                {e.detail && <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{e.detail}</div>}
+                <div style={{ fontSize: 9, color: e.health_impact > 0 ? C.green : e.health_impact < 0 ? C.red : C.dim, marginTop: 1 }}>
+                  {e.health_impact !== 0 ? `${e.health_impact > 0 ? '▲ +' : '▼ '}${Math.abs(e.health_impact)} health pts` : 'No impact'}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: C.dim, textAlign: 'center', padding: '20px 0' }}>No events yet</div>
+      )}
+    </div>
+  )
+}
+
+/* ── Main component ────────────────────────────────────────────── */
 
 export default function ProjectHealth() {
-  const [range, setRange] = useState<'24h' | '7d' | '30d'>('24h');
-  const health = usePolling<ProjectHealthData>(
-    `/api/project-health?range=${range}`,
-    30_000,
-  );
+  const [activeRepo, setActiveRepo] = useState('')
 
-  /* loading state */
-  if (health.loading) {
-    return (
-      <div>
-        <TimeRangeSelector value={range} onChange={setRange} />
-        <div style={CENTER}>Loading…</div>
-      </div>
-    );
-  }
+  const projectsPoll = usePolling<ProjectInfo[]>('/api/toongine/projects', 60000)
+  const healthPoll = usePolling<HealthScore>(`/api/toongine/health?repo=${activeRepo}`, 30000)
+  const snapshotsPoll = usePolling<CodebaseSnapshot[]>(`/api/toongine/codebase?repo=${activeRepo}`, 60000)
+  const apiPoll = usePolling<ApiHealthEntry[]>(`/api/toongine/api-health?repo=${activeRepo}`, 30000)
+  const issuesPoll = usePolling<IssueEntry[]>(`/api/toongine/issues?repo=${activeRepo}`, 30000)
+  const eventsPoll = usePolling<HealthEvent[]>(`/api/toongine/events?repo=${activeRepo}`, 60000)
+  const recsPoll = usePolling<Recommendation[]>(`/api/toongine/recommendations?repo=${activeRepo}`, 30000)
 
-  if (health.error) {
-    return (
-      <div>
-        <TimeRangeSelector value={range} onChange={setRange} />
-        <div style={{ color: C.red, fontSize: 13, padding: 20, textAlign: 'center' }}>
-          {health.error}
-        </div>
-      </div>
-    );
-  }
+  const projects = projectsPoll.data || []
+  const health = healthPoll.data
+  const snapshots = snapshotsPoll.data || []
+  const apiEntries = apiPoll.data || []
+  const issues = issuesPoll.data || []
+  const events = eventsPoll.data || []
+  const recs = recsPoll.data || []
 
-  const d = health.data;
-  if (!d) {
-    return (
-      <div>
-        <TimeRangeSelector value={range} onChange={setRange} />
-        <div style={MUTED}>No data yet</div>
-      </div>
-    );
-  }
+  if (!activeRepo && projects.length > 0) setActiveRepo(projects[0].repo_id)
 
-  const th = d.toonHealth;
-  const bh = d.bundleHealth;
-  const ah = d.apiHealth;
-  const iss = d.issues;
+  const loading = healthPoll.loading
 
   return (
     <div style={{ paddingBottom: 40 }}>
-      {/* ── Time Range Selector ──────────────────────────── */}
-      <TimeRangeSelector value={range} onChange={setRange} />
-
-      {/* ── KPI Row ──────────────────────────────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 16,
-        marginBottom: 24,
-      }}>
-        <StatCard
-          label="TOON Health"
-          value={`${th.avgSavingsPercent.toFixed(1)}%`}
-          sub={`${th.totalContent} content · Grade ${th.grade}`}
-          color={gradeColor(th.grade)}
-        />
-        <StatCard
-          label="Bundle Health"
-          value={bh.buildStatus}
-          sub={`${bh.pages} pages · ${bh.lastBuildTime}`}
-          color={bh.buildStatus === 'OK' || bh.buildStatus === 'ok' ? C.green : C.yellow}
-        />
-        <StatCard
-          label="API Health"
-          value={`${ah.successRate.toFixed(1)}%`}
-          sub={ah.statusBadges?.join(' · ') || ''}
-          color={ah.successRate >= 95 ? C.green : ah.successRate >= 80 ? C.yellow : C.red}
-        />
-        <StatCard
-          label="Issues"
-          value={`${iss.warningCount + iss.criticalCount}`}
-          sub={`${iss.warningCount} warnings · ${iss.criticalCount} critical`}
-          color={iss.criticalCount > 0 ? C.red : iss.warningCount > 0 ? C.yellow : C.green}
-        />
-      </div>
-
-      {/* ── Toon Quality Bars ────────────────────────────── */}
-      <div style={CARD}>
-        <h3 style={SECTION_TITLE}>📊 TOON Quality by Content Type</h3>
-        {d.toonQuality ? (
-          <ToonQualityBars items={d.toonQuality} />
-        ) : (
-          <div style={MUTED}>No quality data yet</div>
-        )}
-      </div>
-
-      {/* ── Savings Trend + Match Quality ────────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-        gap: 20,
-        marginBottom: 20,
-      }}>
-        <div style={CARD}>
-          <h3 style={SECTION_TITLE}>📈 Savings Trend</h3>
-          {d.savingsTrend && d.savingsTrend.length > 1 ? (
-            <Sparkline data={d.savingsTrend} width={600} height={48} color={C.accent} />
-          ) : (
-            <div style={MUTED}>No trend data yet</div>
-          )}
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>🏥 Project Health</h2>
+          <RepoSelector projects={projects} active={activeRepo} onChange={setActiveRepo} />
         </div>
-
-        <div style={CARD}>
-          <h3 style={SECTION_TITLE}>🔍 Top-K Match Quality</h3>
-          {d.matchQuality ? (
-            <MatchQualityCard mq={d.matchQuality} />
-          ) : (
-            <div style={MUTED}>No match quality data yet</div>
-          )}
-        </div>
+        <span style={{ fontSize: 10, color: C.dim }}>
+          <span style={{ color: C.green, animation: 'pulse 2s infinite' }}>●</span> Recomputed hourly
+        </span>
       </div>
 
-      {/* ── Codebase Structure ────────────────────────────── */}
-      <div style={CARD}>
-        <h3 style={SECTION_TITLE}>🏗 Codebase Structure</h3>
-        {d.codebaseStructure ? (
-          <div>
-            <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
-              Last compile: {d.codebaseStructure.lastCompileTime}
-              {' · '}
-              Delta: +{d.codebaseStructure.deltaFiles} files · +{d.codebaseStructure.deltaChunks} chunks
+      {loading ? (
+        <div style={{ textAlign: 'center', color: C.muted, padding: 60 }}>Computing health score…</div>
+      ) : (
+        <>
+          {/* Top row: Score + Insights */}
+          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 12, marginBottom: 14 }}>
+            <ScoreRing score={health?.score ?? 0} trend={health?.trend_direction ?? 'stable'} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {health && (
+                <>
+                  <InsightCard type="good" icon="📈">
+                    <strong>{health.topInsight}</strong> · Score {health.score}/100 · Codebase: {health.codebase.toFixed(0)} · API: {health.api.toFixed(0)} · TOON: {health.toon.toFixed(0)} · Issues: {health.issues.toFixed(0)}
+                  </InsightCard>
+                  {health.trend_direction !== 'stable' && (
+                    <InsightCard type={health.trend_direction === 'up' ? 'good' : 'warn'} icon={health.trend_direction === 'up' ? '▲' : '▼'}>
+                      Health {health.trend_direction === 'up' ? 'improving' : 'declining'} · Trend: {health.trend > 0 ? '+' : ''}{health.trend.toFixed(1)}/week
+                      {health.trend > 0 && ` · Projected ${health.projected_next} by next week`}
+                    </InsightCard>
+                  )}
+                </>
+              )}
+              {!health && <InsightCard type="info" icon="⏳">Waiting for first health computation. Pipeline runs hourly.</InsightCard>}
             </div>
-            <CodebaseView cs={d.codebaseStructure} />
           </div>
-        ) : (
-          <div style={MUTED}>No codebase data yet</div>
-        )}
-      </div>
 
-      {/* ── API Route Health + Prompt Quality ─────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-        gap: 20,
-        marginBottom: 20,
-      }}>
-        <div style={CARD}>
-          <h3 style={SECTION_TITLE}>🌐 API Route Health</h3>
-          {d.apiRouteHealth ? (
-            <ApiRouteHealthTable routes={d.apiRouteHealth} />
-          ) : (
-            <div style={MUTED}>No route data yet</div>
-          )}
-        </div>
+          {/* Codebase + API */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            <CodebasePanel snapshots={snapshots} />
+            <ApiPanel entries={apiEntries} />
+          </div>
 
-        <div style={CARD}>
-          <h3 style={SECTION_TITLE}>📝 Prompt Quality</h3>
-          {d.promptQuality ? (
-            <PromptQualityCard pq={d.promptQuality} />
-          ) : (
-            <div style={MUTED}>No prompt quality data yet</div>
-          )}
-        </div>
-      </div>
+          {/* Issues + Recommendations */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            <IssuesPanel issues={issues} />
+            <RecommendationsPanel recs={recs} />
+          </div>
 
-      {/* ── Issues Feed ───────────────────────────────────── */}
-      <div style={CARD}>
-        <h3 style={SECTION_TITLE}>⚠️ Issues Feed</h3>
-        {d.issuesFeed ? (
-          <IssuesFeed issues={d.issuesFeed} />
-        ) : (
-          <div style={MUTED}>No issues data yet</div>
-        )}
-      </div>
+          {/* Timeline */}
+          <TimelinePanel events={events} />
 
-      {/* ── Doc Coverage ──────────────────────────────────── */}
-      <div style={CARD}>
-        <h3 style={SECTION_TITLE}>📚 Documentation Coverage</h3>
-        {d.docCoverage ? (
-          <DocCoverageGrid items={d.docCoverage} />
-        ) : (
-          <div style={MUTED}>No doc coverage data yet</div>
-        )}
-      </div>
+          {/* Footer */}
+          <div style={{ textAlign: 'center', fontSize: 10, color: C.dim, marginTop: 14 }}>
+            ⚡ 7 DSA structures active · Ring Buffer · Sliding Window · Priority Queue · Linear Regression · Rule Engine
+            {events.length === 0 && ' · No events yet — pipeline running hourly'}
+          </div>
+        </>
+      )}
     </div>
-  );
+  )
 }
