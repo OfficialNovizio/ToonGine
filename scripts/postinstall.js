@@ -159,6 +159,27 @@ try {
   }
 
   console.log('')
+
+  // ── Inject Agent Dashboard into host project ────────────────────────────
+  try {
+    const { injectDashboard } = require('../dist/dashboard/inject')
+    const result = injectDashboard(cwd)
+    if (result.created.length > 0) {
+      console.log(`  📊 Dashboard injected: ${result.created.join(', ')}`)
+    }
+    if (result.updated.length > 0) {
+      console.log(`  🔄 Nav updated: ${result.updated.join(', ')}`)
+    }
+    if (result.errors.length > 0) {
+      console.log(`  ⚠️  ${result.errors.join('; ')}`)
+    }
+    if (result.dashboardPath) {
+      console.log(`  🌐 Dashboard: ${result.dashboardPath}`)
+    }
+  } catch (e) {
+    console.log('  ⚠️  Dashboard injection skipped (build first)')
+  }
+
   // Find the toongine CLI
   const cliPath = path.join(__dirname, '..', 'cli', 'toongine.js')
   if (!fs.existsSync(cliPath)) {
