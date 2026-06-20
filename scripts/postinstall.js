@@ -141,6 +141,7 @@ try {
           fs.copyFileSync(s, path.join(toonDest, f))
         }
       } else {
+        mkdir(docsDest)
         if (!fs.existsSync(path.join(docsDest, f))) {
           fs.copyFileSync(s, path.join(docsDest, f))
         }
@@ -232,7 +233,11 @@ print('OK')
 
   if (needsIntegrate) {
     console.log('\n  🔌 Running: npx toongine integrate\n')
-    execSync(`node "${cliPath}" integrate`, { cwd, stdio: 'inherit' })
+    try {
+      execSync(`node "${cliPath}" integrate`, { cwd, stdio: 'inherit' })
+    } catch (e) {
+      console.log(`  ⚠️  integrate failed: ${e.message} — continuing with config setup`)
+    }
   } else if (needsV3) {
     console.log('\n  🧠 Rebuilding V3 engine...\n')
     // Just recompile v3 without full reintegration
@@ -248,20 +253,29 @@ print('OK')
 
   console.log('  ✅ toongine auto-configuration complete!\n')
 
+  // Detect repo from git remote (shared across all config sections)
+  let repoId = 'unknown/unknown'
+  let name = 'unknown'
+  let owner = 'unknown'
+  let toongineVersion = '0.0.0'
+  try {
+    const remote = execSync('git remote get-url origin', { encoding: 'utf-8', timeout: 3000 }).trim()
+    const match = remote.match(/[:/]([^/]+)\/([^/]+?)(?:\.git)?$/)
+    if (match) {
+      owner = match[1]
+      name = match[2]
+      repoId = `${owner}/${name}`
+    }
+  } catch {}
+  // Read ToonGine version from own package.json
+  try {
+    toongineVersion = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8')).version
+  } catch {}
+
   // ── Register project in ToonGine Supabase (Token Burn Engine) ─────
   try {
     const supabaseUrl = 'https://mcejxdjrwzjxafciuely.supabase.co'
     const supabaseKey = process.env.TOONGINE_SUPABASE_KEY || ''
-
-    // Detect repo from git remote
-    let repoId = 'unknown/unknown'
-    try {
-      const remote = execSync('git remote get-url origin', { encoding: 'utf-8', timeout: 3000 }).trim()
-      const match = remote.match(/[:/]([^/]+)\/([^/]+?)(?:\.git)?$/)
-      if (match) repoId = `${match[1]}/${match[2]}`
-    } catch {}
-
-    const [owner, name] = repoId.split('/')
 
     // Write .toongine.json for the plugin
     const cfg = { repo: repoId, supabase_url: supabaseUrl, created_at: new Date().toISOString() }
@@ -288,6 +302,68 @@ print('OK')
       req.end()
     }
   } catch {}
+
+  // ── Write .toon/config.json (tracked in git — project identity) ─────────
+  try {
+    const toonDir = path.join(cwd, '.toon')
+    mkdir(toonDir)
+    const configPath = path.join(toonDir, 'config.json')
+    const projectConfig = {
+      repo_id: repoId,
+      name: name,
+      owner: owner,
+      created_at: new Date().toISOString(),
+      version: toongineVersion,
+    }
+    fs.writeFileSync(configPath, JSON.stringify(projectConfig, null, 2))
+    console.log('  📋 .toon/config.json written (project identity)')
+  } catch (e) {
+    console.log(`  ⚠️  config.json write skipped: ${e.message}`)
+  }
+
+  // ── Smart .gitignore: track config + agents, ignore cache/graph ─────────
+  try {
+    const giPath = path.join(cwd, '.gitignore')
+    let giContent = fs.existsSync(giPath) ? fs.readFileSync(giPath, 'utf-8') : ''
+
+    const toKeep = [
+      '!.toon/config.json',
+      '!.toon/agents/',
+      '!.toon/agents/**/MEMORY.md',
+      '!.toon/docs/',
+    ]
+
+    const toIgnore = [
+      '.toon/cache/',
+      '.toon/graph/*.db',
+      '.toon/snapshots/',
+      '.toon/tmp/',
+    ]
+
+    // Ensure .toon/ is ignored first (base rule)
+    if (!giContent.match(/^\.toon[\/\n]/m)) {
+      giContent += '\n# ToonGine — project identity tracked, telemetry ignored\n.toon/\n'
+    }
+
+    // Add unignore rules for tracked files
+    for (const rule of toKeep) {
+      if (!giContent.includes(rule)) {
+        giContent += `${rule}\n`
+      }
+    }
+
+    // Add explicit ignore for transient files
+    for (const rule of toIgnore) {
+      if (!giContent.includes(rule)) {
+        giContent += `${rule}\n`
+      }
+    }
+
+    fs.writeFileSync(giPath, giContent.trimEnd() + '\n')
+    console.log('  📝 .gitignore updated — config + agents tracked, cache ignored')
+  } catch (e) {
+    console.log(`  ⚠️  .gitignore update skipped: ${e.message}`)
+  }
 
   console.log('')
 } catch (e) {

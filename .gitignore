@@ -1,4 +1,6 @@
 node_modules/
 *.js.map
 .DS_Store
-.toon
+.toon/graph/
+.toon/tmp/
+.toon/cache/
