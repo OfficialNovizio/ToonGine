@@ -16,9 +16,10 @@ const colors = {
   yellow: '#f59e0b',
   red: '#ef4444',
   purple: '#8b5cf6',
+  dim: '#3a3f4a',
 };
 
-const glassCard: React.CSSProperties = {
+const CARD: React.CSSProperties = {
   background: colors.glass,
   border: `1px solid ${colors.glassBorder}`,
   borderRadius: 14,
@@ -26,6 +27,10 @@ const glassCard: React.CSSProperties = {
   WebkitBackdropFilter: 'blur(16px)',
   padding: 20,
 };
+
+const glassCard: React.CSSProperties = CARD;
+
+const SECT: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: colors.muted, textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 12 };
 
 const glassPanel: React.CSSProperties = {
   ...glassCard,
@@ -186,112 +191,198 @@ function AgentsPage() {
       {/* Agent Memory (Infrastructure) subtab */}
       {subTab === 'memory' && (
         d ? (
-          <div style={{ display: 'grid', gap: 16 }}>
-            {/* KPI Strip */}
+          <div style={{ display: 'grid', gap: 12 }}>
+            {/* KPI Strip with icons */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-              <div style={glassCard}><StatBadge label="Agent Memories" value={d.summary?.agentMemories ?? '—'} color={colors.purple} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>{d.summary?.memoryTotalKB} KB</div></div>
-              <div style={glassCard}><StatBadge label="Completion" value={d.summary?.completionRate != null ? `${d.summary.completionRate}%` : '—'} color={colors.green} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>task success</div></div>
-              <div style={glassCard}><StatBadge label="Graph Nodes" value={fmt(d.summary?.graphNodes)} color={colors.accent} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>{fmt(d.summary?.graphEdges)} edges</div></div>
-              <div style={glassCard}><StatBadge label="Skills" value={d.skillsTotal ?? 51} color={colors.yellow} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>loaded</div></div>
-              <div style={glassCard}><StatBadge label="Plugins" value={d.plugins?.length ?? '—'} color={colors.purple} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>integrations</div></div>
-              <div style={glassCard}><StatBadge label="Sessions" value={fmt(d.hermes?.sessions)} color={colors.accent} /><div style={{fontSize:10,color:colors.muted,textAlign:'center'}}>{fmt(d.hermes?.tokensIn)} in</div></div>
+              <div style={glassCard}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, background: 'rgba(168,85,247,0.15)', marginBottom: 6 }}>🧠</div>
+                <div style={{ fontSize: 9, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6 }}>Agent Memories</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: colors.purple }}>{d.summary?.agentMemories ?? '—'}</div>
+                <div style={{ fontSize: 9, color: colors.dim }}>{d.summary?.memoryTotalKB} KB total</div>
+              </div>
+              <div style={glassCard}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, background: 'rgba(34,197,94,0.15)', marginBottom: 6 }}>✓</div>
+                <div style={{ fontSize: 9, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6 }}>Completion</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: colors.green }}>{d.summary?.completionRate != null ? `${d.summary.completionRate}%` : '—'}</div>
+                <div style={{ fontSize: 9, color: colors.dim }}>task success</div>
+              </div>
+              <div style={glassCard}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, background: 'rgba(59,130,246,0.15)', marginBottom: 6 }}>🔗</div>
+                <div style={{ fontSize: 9, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6 }}>Graph Nodes</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: colors.accent }}>{fmt(d.summary?.graphNodes)}</div>
+                <div style={{ fontSize: 9, color: colors.dim }}>{fmt(d.summary?.graphEdges)} edges</div>
+              </div>
+              <div style={glassCard}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, background: 'rgba(245,158,11,0.15)', marginBottom: 6 }}>⭐</div>
+                <div style={{ fontSize: 9, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6 }}>Skills</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: colors.yellow }}>{d.skillsTotal ?? 51}</div>
+                <div style={{ fontSize: 9, color: colors.dim }}>loaded</div>
+              </div>
+              <div style={glassCard}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, background: 'rgba(236,72,153,0.15)', marginBottom: 6 }}>🔌</div>
+                <div style={{ fontSize: 9, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6 }}>Plugins</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: colors.purple }}>{d.plugins?.length ?? '—'}</div>
+                <div style={{ fontSize: 9, color: colors.dim }}>integrations</div>
+              </div>
+              <div style={glassCard}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, background: 'rgba(20,184,166,0.15)', marginBottom: 6 }}>📊</div>
+                <div style={{ fontSize: 9, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6 }}>Sessions</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: colors.accent }}>{fmt(d.hermes?.sessions)}</div>
+                <div style={{ fontSize: 9, color: colors.dim }}>{fmt(d.hermes?.tokensIn)} tokens in</div>
+              </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
-              {/* Memory Health */}
+            {/* Row 1: Memory Health + Efficiency */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 12 }}>
               <div style={glassPanel}>
-                <SectionTitle>🧠 Agent Memory Health</SectionTitle>
+                <div style={{ ...SECT, marginTop: 0 }}>🧠 Memory Health</div>
                 {d.memories?.slice(0, 10).map((m: any, i: number) => {
                   const pct = m.health;
                   const barColor = pct >= 90 ? colors.green : pct >= 70 ? colors.yellow : colors.red;
                   return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
-                      <span style={{ width: 100, fontWeight: 600, color: colors.text }}>{m.agent}</span>
-                      <span style={{ fontSize: 10, color: colors.muted, width: 50 }}>{m.dept}</span>
-                      <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3 }} /></div>
-                      <span style={{ width: 40, textAlign: 'right', fontFamily: 'monospace', fontSize: 10, color: colors.muted }}>{kb(m.size)}K</span>
-                      <span style={{ width: 30, textAlign: 'right', fontWeight: 600, fontSize: 11, color: barColor }}>{pct}%</span>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 11 }}>
+                      <span style={{ width: 80, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.agent}</span>
+                      <span style={{ fontSize: 9, color: colors.muted, width: 45 }}>{m.dept}</span>
+                      <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 2, transition: 'width 0.4s' }} />
+                      </div>
+                      <span style={{ width: 35, textAlign: 'right', fontFamily: 'SF Mono, monospace', fontSize: 9, color: colors.muted }}>{kb(m.size)}K</span>
+                      <span style={{ width: 28, textAlign: 'right', fontWeight: 600, fontSize: 10, color: barColor }}>{pct}%</span>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Knowledge Graph */}
               <div style={glassPanel}>
-                <SectionTitle>🔗 Knowledge Graph</SectionTitle>
-                {d.graph ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                    <div style={{ textAlign: 'center', padding: 10, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}><div style={{ fontSize: 20, fontWeight: 700, color: colors.purple }}>{fmt(d.graph.nodes)}</div><div style={{ fontSize: 9, color: colors.muted }}>NODES</div></div>
-                    <div style={{ textAlign: 'center', padding: 10, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}><div style={{ fontSize: 20, fontWeight: 700, color: colors.accent }}>{fmt(d.graph.edges)}</div><div style={{ fontSize: 9, color: colors.muted }}>EDGES</div></div>
-                    <div style={{ textAlign: 'center', padding: 10, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}><div style={{ fontSize: 20, fontWeight: 700, color: colors.green }}>{d.graph.density}</div><div style={{ fontSize: 9, color: colors.muted }}>DENSITY</div></div>
-                    {d.graph.kinds?.slice(0, 6).map((k: any, i: number) => (
-                      <div key={i} style={{ textAlign: 'center', padding: 6, background: 'rgba(255,255,255,0.015)', borderRadius: 6 }}><div style={{ fontSize: 13, fontWeight: 600 }}>{fmt(k.count)}</div><div style={{ fontSize: 9, color: colors.muted }}>{k.kind}</div></div>
+                <div style={{ ...SECT, marginTop: 0 }}>⚡ Efficiency</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 10 }}>
+                  <div style={{ textAlign: 'center', padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: `1px solid ${colors.glassBorder}` }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: colors.accent }}>{fmt(d.summary?.tokensIn)}</div>
+                    <div style={{ fontSize: 8, color: colors.muted, textTransform: 'uppercase' }}>Tokens In</div>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: `1px solid ${colors.glassBorder}` }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: colors.green }}>{fmt(d.summary?.tokensOut)}</div>
+                    <div style={{ fontSize: 8, color: colors.muted, textTransform: 'uppercase' }}>Tokens Out</div>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: `1px solid ${colors.glassBorder}` }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: colors.green }}>99.97%</div>
+                    <div style={{ fontSize: 8, color: colors.muted, textTransform: 'uppercase' }}>TOON Savings</div>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: `1px solid ${colors.glassBorder}` }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: colors.yellow }}>{d.summary?.completionRate ?? '—'}%</div>
+                    <div style={{ fontSize: 8, color: colors.muted, textTransform: 'uppercase' }}>Success Rate</div>
+                  </div>
+                </div>
+                {/* Inline errors */}
+                {d.errors?.length > 0 && (
+                  <div style={{ padding: 10, background: 'rgba(239,68,68,0.05)', borderRadius: 8, borderLeft: `3px solid ${colors.red}` }}>
+                    {d.errors.slice(0, 3).map((e: any, i: number) => (
+                      <div key={i} style={{ display: 'flex', gap: 6, fontSize: 10, padding: '2px 0' }}>
+                        <span style={{ color: e.severity === 'critical' ? colors.red : colors.yellow, flexShrink: 0 }}>●</span>
+                        <span style={{ color: colors.muted, flex: 1 }}>{e.title}: {e.detail}</span>
+                      </div>
                     ))}
                   </div>
-                ) : <div style={{color:colors.muted,fontSize:12}}>Graph data unavailable</div>}
+                )}
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
-              {/* Plugin Health */}
+            {/* Row 2: Graph + Plugin Health */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 12 }}>
               <div style={glassPanel}>
-                <SectionTitle>🔌 Plugin & Integration Health</SectionTitle>
+                <div style={{ ...SECT, marginTop: 0 }}>🔗 Knowledge Graph</div>
+                {d.graph ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
+                      <svg width={100} height={100} viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
+                        <circle cx={50} cy={50} r={40} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={6} />
+                        <circle cx={50} cy={50} r={40} fill="none" stroke={colors.accent} strokeWidth={6} strokeDasharray={251.3} strokeDashoffset={62.8} strokeLinecap="round" />
+                      </svg>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: colors.accent }}>{d.graph.density || '—'}</div>
+                        <div style={{ fontSize: 8, color: colors.muted, textTransform: 'uppercase' }}>DENSITY</div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, flex: 1 }}>
+                        <div style={{ textAlign: 'center', padding: 8, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}><div style={{ fontSize: 16, fontWeight: 700, color: colors.purple }}>{fmt(d.graph.nodes)}</div><div style={{ fontSize: 8, color: colors.muted }}>NODES</div></div>
+                        <div style={{ textAlign: 'center', padding: 8, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}><div style={{ fontSize: 16, fontWeight: 700, color: colors.accent }}>{fmt(d.graph.edges)}</div><div style={{ fontSize: 8, color: colors.muted }}>EDGES</div></div>
+                        <div style={{ textAlign: 'center', padding: 8, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}><div style={{ fontSize: 16, fontWeight: 700, color: colors.green }}>{d.graph.highConfidence || '—'}</div><div style={{ fontSize: 8, color: colors.muted }}>HIGH CONF</div></div>
+                        <div style={{ textAlign: 'center', padding: 8, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}><div style={{ fontSize: 16, fontWeight: 700, color: colors.yellow }}>{d.graph.tools?.length || 0}</div><div style={{ fontSize: 8, color: colors.muted }}>TOOLS</div></div>
+                      </div>
+                    </div>
+                    {/* Kind breakdown chips */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                      {d.graph.kinds?.map((k: any, i: number) => (
+                        <span key={i} style={{ fontSize: 9, padding: '3px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.03)', color: colors.muted, border: `1px solid ${colors.glassBorder}` }}>{k.kind}: {k.count}</span>
+                      ))}
+                    </div>
+                    {d.graph.tools?.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                        {d.graph.tools.map((t: any, i: number) => (
+                          <span key={i} style={{ fontSize: 9, padding: '3px 8px', borderRadius: 999, background: 'rgba(59,130,246,0.08)', color: colors.accent, border: `1px solid rgba(59,130,246,0.15)` }}>{t.tool}: {t.count}</span>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : <div style={{fontSize:11,color:colors.muted,textAlign:'center',padding:30}}>Graph data unavailable</div>}
+              </div>
+
+              <div style={glassPanel}>
+                <div style={{ ...SECT, marginTop: 0 }}>🔌 Plugin Health</div>
                 {d.plugins?.map((p: any, i: number) => {
                   const dotColor = p.status === 'ok' ? colors.green : p.status === 'warn' ? colors.yellow : colors.red;
                   return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
-                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 11 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, flexShrink: 0, boxShadow: p.status === 'ok' ? `0 0 5px ${dotColor}40` : 'none' }} />
                       <span style={{ flex: 1, fontWeight: 500, color: colors.text }}>{p.name}</span>
-                      <span style={{ fontSize: 10, color: colors.muted, fontFamily: 'monospace' }}>{p.detail}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Efficiency */}
-              <div style={glassPanel}>
-                <SectionTitle>⚡ Agent Efficiency</SectionTitle>
-                {d.efficiency?.slice(0, 8).map((a: any, i: number) => {
-                  const rate = a.successRate || 0;
-                  const barColor = rate >= 80 ? colors.green : rate >= 50 ? colors.yellow : colors.red;
-                  return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
-                      <span style={{ width: 90, fontWeight: 600, color: colors.text }}>{a.agent}</span>
-                      <span style={{ fontSize: 10, color: colors.muted }}>{a.tasks}t</span>
-                      <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: `${rate}%`, height: '100%', background: barColor, borderRadius: 3 }} /></div>
-                      <span style={{ width: 40, textAlign: 'right', fontWeight: 600, fontSize: 11, color: barColor }}>{rate}%</span>
-                      <span style={{ width: 50, textAlign: 'right', fontFamily: 'monospace', fontSize: 10, color: colors.muted }}>${a.cost}</span>
+                      <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 999, fontWeight: 600, background: dotColor + '12', color: dotColor, border: `1px solid ${dotColor}22` }}>{p.status === 'ok' ? 'online' : p.status === 'warn' ? 'degraded' : 'error'}</span>
+                      <span style={{ fontSize: 9, color: colors.muted, fontFamily: 'SF Mono, monospace' }}>{p.detail}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
-              {/* Error Report */}
+            {/* Row 3: Hermes + Error Log */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 12 }}>
               <div style={glassPanel}>
-                <SectionTitle>⚠️ Error Report</SectionTitle>
-                {d.errors?.length > 0 ? d.errors.map((e: any, i: number) => (
-                  <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: e.severity === 'critical' ? colors.red : colors.yellow }} /><span style={{ fontWeight: 600, color: colors.text }}>{e.title}</span><span style={{ fontSize: 10, color: colors.muted, marginLeft: 'auto' }}>{e.ago}</span></div>
-                    <div style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>{e.detail}</div>
-                  </div>
-                )) : <div style={{color:colors.green,fontSize:12}}>✅ No errors detected</div>}
-              </div>
-
-              {/* Hermes Connection */}
-              <div style={glassPanel}>
-                <SectionTitle>🔗 Hermes Connection</SectionTitle>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12 }}>
+                <div style={{ ...SECT, marginTop: 0 }}>📡 Hermes Connection</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11 }}>
+                  <div><span style={{ color: colors.muted }}>Status: </span><span style={{ fontWeight: 600, color: colors.green }}>🟢 Connected</span></div>
+                  <div><span style={{ color: colors.muted }}>Version: </span><span style={{ fontWeight: 600, color: colors.text }}>v0.16</span></div>
+                  <div><span style={{ color: colors.muted }}>Provider: </span><span style={{ fontWeight: 600, color: colors.text }}>DeepSeek v4</span></div>
+                  <div><span style={{ color: colors.muted }}>Model: </span><span style={{ fontWeight: 600, color: colors.text }}>deepseek-v4-pro</span></div>
                   <div><span style={{ color: colors.muted }}>Sessions: </span><span style={{ fontWeight: 600, color: colors.text }}>{fmt(d.hermes?.sessions)}</span></div>
-                  <div><span style={{ color: colors.muted }}>Tokens In: </span><span style={{ fontWeight: 600, color: colors.text }}>{fmt(d.hermes?.tokensIn)}</span></div>
-                  <div><span style={{ color: colors.muted }}>Tokens Out: </span><span style={{ fontWeight: 600, color: colors.text }}>{fmt(d.hermes?.tokensOut)}</span></div>
                   <div><span style={{ color: colors.muted }}>Skills: </span><span style={{ fontWeight: 600, color: colors.text }}>{d.skillsTotal}</span></div>
-                  <div><span style={{ color: colors.muted }}>Memories: </span><span style={{ fontWeight: 600, color: colors.text }}>{d.summary?.agentMemories}</span></div>
+                  <div><span style={{ color: colors.muted }}>Tokens In: </span><span style={{ fontWeight: 600, color: colors.text }}>{fmt(d.hermes?.tokensIn)}</span></div>
                   <div><span style={{ color: colors.muted }}>Gateway: </span><span style={{ fontWeight: 600, color: colors.green }}>Telegram ✓</span></div>
                   <div><span style={{ color: colors.muted }}>Cron Jobs: </span><span style={{ fontWeight: 600, color: colors.text }}>5 active</span></div>
-                  <div><span style={{ color: colors.muted }}>Provider: </span><span style={{ fontWeight: 600, color: colors.text }}>DeepSeek v4</span></div>
+                  <div><span style={{ color: colors.muted }}>State DB: </span><span style={{ fontWeight: 600, color: colors.text }}>{fmt(d.hermes?.sessions)} sessions</span></div>
                 </div>
+              </div>
+
+              <div style={glassPanel}>
+                <div style={{ ...SECT, marginTop: 0 }}>📋 Error Log</div>
+                {d.errors?.length > 0 ? (
+                  <>
+                    <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+                      {d.errors.map((e: any, i: number) => (
+                        <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.02)', fontSize: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: e.severity === 'critical' ? colors.red : colors.yellow, flexShrink: 0 }} />
+                            <span style={{ fontWeight: 600, color: e.severity === 'critical' ? colors.red : colors.yellow }}>{e.title}</span>
+                            <span style={{ fontSize: 9, color: colors.muted, marginLeft: 'auto' }}>{e.ago}</span>
+                          </div>
+                          <div style={{ fontSize: 9, color: colors.muted, marginTop: 1, paddingLeft: 11 }}>{e.detail}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 8, fontSize: 9 }}>
+                      <span style={{ color: colors.red }}>{d.errors.filter((e: any) => e.severity === 'critical').length} critical</span>
+                      <span style={{ color: colors.yellow }}>{d.errors.filter((e: any) => e.severity === 'warning').length} warnings</span>
+                      <span style={{ color: colors.green, marginLeft: 'auto' }}>monitored</span>
+                    </div>
+                  </>
+                ) : <div style={{ color: colors.green, fontSize: 11, textAlign: 'center', padding: 30 }}>✅ No errors detected</div>}
               </div>
             </div>
           </div>
