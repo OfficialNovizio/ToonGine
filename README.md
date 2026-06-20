@@ -1,6 +1,6 @@
-# ToonGine v1.5.5 — V4 Graph Bridge Active
+# ToonGine v1.6.0 — Auto-Init Agent Dashboard
 
-**AI Agent OS Kernel — One `npm install`. 24 agents, TOON compressor (99.97% savings), knowledge graphs, Hermes MCP bridge.**
+**AI Agent OS Kernel — One `npm install`. 24 agents, TOON compressor (99.97% savings), knowledge graphs, Hermes MCP bridge, auto-injected agent dashboard.**
 
 [![npm](https://img.shields.io/badge/npm-toongine-blue)](https://www.npmjs.com/package/toongine)
 [![node](https://img.shields.io/badge/node-%3E%3D18.0.0-green)](https://nodejs.org)
@@ -14,7 +14,7 @@
 ## Quick Install
 
 ```bash
-npm install toongine         # install as dependency
+npm install toongine         # install as dependency → auto-injects dashboard
 npx toongine init             # ONE command — installs tools, builds graph, starts watchers
 npx toongine doctor           # health check — all systems
 npx toongine agents           # list all 24 agents
@@ -27,18 +27,33 @@ npx toongine dashboard        # live dashboard → localhost:4200
 # ONE command — everything is automatic
 npm install toongine
 
-# That's it. Postinstall auto-deploys:
-#  ✅ .toon/agents/ — 24 agents
+# Postinstall auto-deploys:
+#  ✅ 📊 Agent Dashboard — injected into your project's navbar (/toongine)
+#  ✅ .toon/agents/ — 24 agents with MEMORY.md
 #  ✅ .toon/graph/unified.db — unified knowledge graph
 #  ✅ .toon/hermes/mcp-server.py — MCP graph bridge
 #  ✅ ~/.hermes/.../yvon/ — Hermes skills with graph tools
 #  ✅ ~/.hermes/config.yaml — MCP server auto-registered
 #  ✅ File watchers started
 
+# Open your project → ⚡ToonGine in navbar → click "Initialize"
+# Dashboard shows: memory health, graph, plugins, efficiency, errors
+
 # Verify everything
 npx toongine doctor
 hermes mcp test toongine-graph  # → 5 tools discovered
 ```
+
+## 🆕 Auto-Init Agent Dashboard
+
+When you `npm install toongine` in any project:
+- **Detects** framework (Next.js, Vite, plain HTML)
+- **Creates** `/toongine` page with full agent dashboard
+- **Injects** `⚡ToonGine` link into your existing navbar
+- **Shows** "🚀 Initialize ToonGine" button on first open
+- **Click** → TOON compiles, graph builds, data syncs (progress bar)
+- **After init** → live dashboard: memory health, knowledge graph, plugins, efficiency, errors
+- **New projects** → all sections visible with zero values
 
 ---
 
