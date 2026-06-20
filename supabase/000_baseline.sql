@@ -1,6 +1,7 @@
 -- =============================================================================
--- ToonGine Baseline Schema — consolidated from v1, v2, v3, v4, 051
--- One file to rule them all. Idempotent — safe to re-run any number of times.
+-- ToonGine Baseline Schema — consolidated from v1, v2, v3, v4, 051 (pruned)
+-- One file, fully idempotent. Safe to re-run any number of times.
+-- Handles v3→v4 migration: fixes issues table schema, adds missing columns.
 -- Run in Supabase SQL Editor: https://supabase.com/dashboard/project/mcejxdjrwzjxafciuely/sql
 -- =============================================================================
 
@@ -131,7 +132,10 @@ CREATE TABLE IF NOT EXISTS toongine_provider_ledger (
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- 3a. Issues (v4 schema — supersedes v3's different column layout)
-CREATE TABLE IF NOT EXISTS toongine_issues (
+-- DROP first: v3 already created this table with incompatible columns (severity 1-4, resolved boolean).
+-- The pipeline repopulates from scratch, so data loss is safe.
+DROP TABLE IF EXISTS toongine_issues CASCADE;
+CREATE TABLE toongine_issues (
   id              BIGSERIAL PRIMARY KEY,
   repo_id         TEXT NOT NULL,
   priority        INTEGER NOT NULL DEFAULT 2 CHECK (priority >= 0 AND priority <= 3),
@@ -191,6 +195,14 @@ CREATE TABLE IF NOT EXISTS toongine_codebase_snapshots (
   UNIQUE(repo_id, slot)
 );
 
+-- If table already existed from v3 (without lint columns), add them safely
+DO $$ BEGIN
+  ALTER TABLE toongine_codebase_snapshots ADD COLUMN lint_errors INT DEFAULT 0;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER TABLE toongine_codebase_snapshots ADD COLUMN lint_warnings INT DEFAULT 0;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
 -- 3d. API Health (v3 base + v4 extras merged)
 CREATE TABLE IF NOT EXISTS toongine_api_health (
   id              BIGSERIAL PRIMARY KEY,
@@ -204,6 +216,17 @@ CREATE TABLE IF NOT EXISTS toongine_api_health (
   ip_hash         TEXT,
   created_at      TIMESTAMPTZ DEFAULT now()
 );
+
+-- If table already existed from v3 (without v4 columns), add them safely
+DO $$ BEGIN
+  ALTER TABLE toongine_api_health ADD COLUMN latency_ms INT DEFAULT 0;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER TABLE toongine_api_health ADD COLUMN user_agent TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER TABLE toongine_api_health ADD COLUMN ip_hash TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 
 -- 3e. Health Events Timeline (v3)
 CREATE TABLE IF NOT EXISTS toongine_health_events (
@@ -289,45 +312,8 @@ CREATE TABLE IF NOT EXISTS metrics.compiles (
 );
 
 -- ═══════════════════════════════════════════════════════════════════════════════
--- SECTION 5: Materialized Views
+-- SECTION 5: Materialized Views (engine metrics only)
 -- ═══════════════════════════════════════════════════════════════════════════════
-
--- Health Dashboard (v4) — composite 0-100 score across 4 pillars
-DROP MATERIALIZED VIEW IF EXISTS toongine_health_dashboard;
-CREATE MATERIALIZED VIEW toongine_health_dashboard AS
-SELECT
-  repo_id,
-  CASE 
-    WHEN COUNT(*) FILTER (WHERE ts_error_free = true)::float / NULLIF(COUNT(*), 0) > 0.95 THEN 25
-    WHEN COUNT(*) FILTER (WHERE ts_error_free = true)::float / NULLIF(COUNT(*), 0) > 0.8 THEN 15
-    ELSE 5
-  END as codebase_score,
-  CASE
-    WHEN COUNT(*) FILTER (WHERE status_code >= 500)::float / NULLIF(COUNT(*), 0) < 0.01 THEN 25
-    WHEN COUNT(*) FILTER (WHERE status_code >= 500)::float / NULLIF(COUNT(*), 0) < 0.05 THEN 15
-    ELSE 5
-  END as api_score,
-  CASE
-    WHEN AVG(compression_ratio) > 0.99 THEN 25
-    WHEN AVG(compression_ratio) > 0.95 THEN 15
-    ELSE 5
-  END as toon_score,
-  CASE
-    WHEN COUNT(*) FILTER (WHERE priority = 0 AND status = 'open') = 0 THEN 25
-    WHEN COUNT(*) FILTER (WHERE priority <= 1 AND status = 'open') <= 2 THEN 15
-    ELSE 5
-  END as issues_score,
-  COUNT(*) FILTER (WHERE ts_error_free = true) as clean_builds,
-  COUNT(*) FILTER (WHERE status_code >= 500) as api_errors,
-  COUNT(*) FILTER (WHERE priority = 0 AND status = 'open') as p0_issues,
-  COUNT(*) FILTER (WHERE priority <= 1 AND status = 'open') as critical_issues,
-  AVG(compression_ratio) as avg_compression,
-  MAX(sampled_at) as last_updated
-FROM toongine_codebase_snapshots
-FULL OUTER JOIN toongine_api_health USING (repo_id)
-FULL OUTER JOIN toongine_toon_health USING (repo_id)
-FULL OUTER JOIN toongine_issues USING (repo_id)
-GROUP BY repo_id;
 
 -- Daily engine summary (051)
 DROP MATERIALIZED VIEW IF EXISTS metrics.daily_summary;
