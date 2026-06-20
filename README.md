@@ -257,19 +257,16 @@ Every agent session now has:
 #### Uninstall & Reinstall
 
 ```bash
-# 1. Remove package (npm handles node_modules cleanup)
+# 1. Remove package (auto-wipes .toon, dashboard, config)
 npm uninstall toongine
 
-# 2. Wipe generated data (optional — skip to keep agents + config)
-rm -rf .toon
-
-# 3. Reinstall fresh
+# 2. Reinstall fresh
 npm install github:OfficialNovizio/ToonGine
 
-# 4. Init (rebuilds graph, re-deploys agents)
+# 3. Init (rebuilds graph, re-deploys agents)
 npx toongine init
 
-# 5. Verify
+# 4. Verify
 npx toongine doctor
 ```
 
