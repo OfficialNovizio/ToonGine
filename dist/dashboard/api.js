@@ -118,10 +118,7 @@ router.get('/agents/infra', (_req, res) => {
     try {
         const data = {};
         // 1. Agent Memory Health
-        const agentsDir = (0, path_1.join)(process.cwd(), '..', '..', '.toon', 'agents');
-        // On VPS, .toon is at /root/yvon/.toon
-        const yvonToon = '/root/yvon/.toon/agents';
-        const memDir = (0, fs_1.existsSync)(yvonToon) ? yvonToon : agentsDir;
+        const memDir = (0, path_1.join)(process.cwd(), '.toon', 'agents');
         const memories = [];
         if ((0, fs_1.existsSync)(memDir)) {
             const depts = (0, fs_1.readdirSync)(memDir).filter(d => (0, fs_1.statSync)((0, path_1.join)(memDir, d)).isDirectory());
@@ -153,9 +150,11 @@ router.get('/agents/infra', (_req, res) => {
         data.memoryAgentCount = memories.length;
         // 2. Graphify Health (Python for SQLite)
         try {
+            const graphPath = (0, path_1.join)(process.cwd(), '.toon', 'graph', 'unified.db');
             const graphJson = (0, child_process_1.execSync)(`python3 -c "
-import sqlite3,json
-db=sqlite3.connect('/root/yvon/.toon/graph/unified.db')
+import sqlite3,json,os
+db_path = '${graphPath.replace(/'/g, "\\'")}'
+db=sqlite3.connect(db_path)
 nodes=db.execute('SELECT COUNT(*) FROM unified_nodes').fetchone()[0]
 edges=db.execute('SELECT COUNT(*) FROM unified_edges').fetchone()[0]
 kinds=db.execute('SELECT kind,COUNT(*) FROM unified_nodes GROUP BY kind ORDER BY COUNT(*) DESC LIMIT 6').fetchall()
@@ -197,7 +196,7 @@ print(json.dumps({'nodes':nodes,'edges':edges,'density':round(edges/nodes,2) if 
         // Graphify
         plugins.push({ name: 'Graphify (code-review-graph)', status: 'ok', detail: '2.3K nodes indexed' });
         // TOON
-        const toonCache = (0, fs_1.existsSync)('/root/yvon/.toon/.compile-cache.json');
+        const toonCache = (0, fs_1.existsSync)((0, path_1.join)(process.cwd(), '.toon', '.compile-cache.json'));
         plugins.push({ name: 'TOON Compiler v4', status: toonCache ? 'ok' : 'warn', detail: toonCache ? '107 files cached' : 'no cache' });
         // Pipeline
         try {
@@ -927,15 +926,11 @@ router.post('/toongine/init', async (_req, res) => {
         }
         catch { }
         send(JSON.stringify({ progress: 65, status: 'Graph built. Syncing agent data...' }));
-        // 3. Sync to Supabase (if configured)
+        // 3. Sync to Supabase (if pipeline exists in project)
         try {
             const pipelinePath = (0, path_1.join)(projectRoot, 'scripts', 'toongine-pipeline.py');
             if ((0, fs_1.existsSync)(pipelinePath)) {
                 (0, child_process_1.execSync)(`python3 ${pipelinePath} 2>&1 || true`, { timeout: 60000, encoding: 'utf-8' });
-            }
-            else {
-                // Try from toongine package
-                (0, child_process_1.execSync)('python3 -c "import subprocess; subprocess.run([\'python3\', \'/root/yvon/scripts/toongine-pipeline.py\'], timeout=60)" 2>&1 || true', { timeout: 60000 });
             }
         }
         catch { }
@@ -969,10 +964,9 @@ router.post('/toongine/init', async (_req, res) => {
 // Returns full dashboard data or { initialized: false } for new projects
 router.get('/toongine/health', (_req, res) => {
     try {
-        // Check if TOON is initialized (has .toon directory)
+        // Check if TOON is initialized (has .toon directory in project root)
         const toonDir = (0, path_1.join)(process.cwd(), '.toon');
-        const toonYvon = '/root/yvon/.toon';
-        const hasToon = (0, fs_1.existsSync)(toonDir) || (0, fs_1.existsSync)(toonYvon);
+        const hasToon = (0, fs_1.existsSync)(toonDir);
         if (!hasToon) {
             res.json({ initialized: false });
             return;
@@ -988,7 +982,7 @@ router.get('/toongine/health', (_req, res) => {
         }
         catch { }
         // Memory
-        const memDir = (0, fs_1.existsSync)(toonYvon) ? (0, path_1.join)(toonYvon, 'agents') : (0, path_1.join)(toonDir, 'agents');
+        const memDir = (0, path_1.join)(toonDir, 'agents');
         const memories = [];
         if ((0, fs_1.existsSync)(memDir)) {
             const depts = (0, fs_1.readdirSync)(memDir).filter(d => (0, fs_1.statSync)((0, path_1.join)(memDir, d)).isDirectory());
@@ -1010,7 +1004,7 @@ router.get('/toongine/health', (_req, res) => {
         data.memories = memories;
         // Graph
         try {
-            const graphDb = (0, path_1.join)(toonYvon || toonDir, 'graph', 'unified.db');
+            const graphDb = (0, path_1.join)(toonDir, 'graph', 'unified.db');
             if ((0, fs_1.existsSync)(graphDb)) {
                 const graphJson = (0, child_process_1.execSync)(`python3 -c "import sqlite3,json;db=sqlite3.connect('${graphDb}');n=db.execute('SELECT COUNT(*) FROM unified_nodes').fetchone()[0];e=db.execute('SELECT COUNT(*) FROM unified_edges').fetchone()[0];k=db.execute('SELECT kind,COUNT(*) FROM unified_nodes GROUP BY kind ORDER BY COUNT(*) DESC LIMIT 6').fetchall();db.close();print(json.dumps({'nodes':n,'edges':e,'density':round(e/n,2) if n else 0,'kinds':[{'kind':k,'count':c} for k,c in k]}))"`, { encoding: 'utf-8', timeout: 5000 });
                 data.graph = JSON.parse(graphJson.trim());

@@ -156,10 +156,7 @@ router.get('/agents/infra', (_req: Request, res: Response) => {
     const data: any = {}
 
     // 1. Agent Memory Health
-    const agentsDir = join(process.cwd(), '..', '..', '.toon', 'agents')
-    // On VPS, .toon is at /root/yvon/.toon
-    const yvonToon = '/root/yvon/.toon/agents'
-    const memDir = existsSync(yvonToon) ? yvonToon : agentsDir
+    const memDir = join(process.cwd(), '.toon', 'agents')
     const memories: { agent: string; dept: string; size: number; health: number }[] = []
     if (existsSync(memDir)) {
       const depts = readdirSync(memDir).filter(d => statSync(join(memDir, d)).isDirectory())
@@ -189,10 +186,12 @@ router.get('/agents/infra', (_req: Request, res: Response) => {
 
     // 2. Graphify Health (Python for SQLite)
     try {
+      const graphPath = join(process.cwd(), '.toon', 'graph', 'unified.db')
       const graphJson = execSync(
         `python3 -c "
-import sqlite3,json
-db=sqlite3.connect('/root/yvon/.toon/graph/unified.db')
+import sqlite3,json,os
+db_path = '${graphPath.replace(/'/g, "\\'")}'
+db=sqlite3.connect(db_path)
 nodes=db.execute('SELECT COUNT(*) FROM unified_nodes').fetchone()[0]
 edges=db.execute('SELECT COUNT(*) FROM unified_edges').fetchone()[0]
 kinds=db.execute('SELECT kind,COUNT(*) FROM unified_nodes GROUP BY kind ORDER BY COUNT(*) DESC LIMIT 6').fetchall()
@@ -224,7 +223,7 @@ print(json.dumps({'nodes':nodes,'edges':edges,'density':round(edges/nodes,2) if 
     // Graphify
     plugins.push({ name: 'Graphify (code-review-graph)', status: 'ok', detail: '2.3K nodes indexed' })
     // TOON
-    const toonCache = existsSync('/root/yvon/.toon/.compile-cache.json')
+    const toonCache = existsSync(join(process.cwd(), '.toon', '.compile-cache.json'))
     plugins.push({ name: 'TOON Compiler v4', status: toonCache ? 'ok' : 'warn', detail: toonCache ? '107 files cached' : 'no cache' })
     // Pipeline
     try {
@@ -1000,14 +999,11 @@ router.post('/toongine/init', async (_req: Request, res: Response) => {
 
     send(JSON.stringify({ progress: 65, status: 'Graph built. Syncing agent data...' }))
 
-    // 3. Sync to Supabase (if configured)
+    // 3. Sync to Supabase (if pipeline exists in project)
     try {
       const pipelinePath = join(projectRoot, 'scripts', 'toongine-pipeline.py')
       if (existsSync(pipelinePath)) {
         execSync(`python3 ${pipelinePath} 2>&1 || true`, { timeout: 60000, encoding: 'utf-8' })
-      } else {
-        // Try from toongine package
-        execSync('python3 -c "import subprocess; subprocess.run([\'python3\', \'/root/yvon/scripts/toongine-pipeline.py\'], timeout=60)" 2>&1 || true', { timeout: 60000 })
       }
     } catch {}
 
@@ -1045,10 +1041,9 @@ router.post('/toongine/init', async (_req: Request, res: Response) => {
 
 router.get('/toongine/health', (_req: Request, res: Response) => {
   try {
-    // Check if TOON is initialized (has .toon directory)
+    // Check if TOON is initialized (has .toon directory in project root)
     const toonDir = join(process.cwd(), '.toon')
-    const toonYvon = '/root/yvon/.toon'
-    const hasToon = existsSync(toonDir) || existsSync(toonYvon)
+    const hasToon = existsSync(toonDir)
     
     if (!hasToon) {
       res.json({ initialized: false })
@@ -1067,7 +1062,7 @@ router.get('/toongine/health', (_req: Request, res: Response) => {
     } catch {}
 
     // Memory
-    const memDir = existsSync(toonYvon) ? join(toonYvon, 'agents') : join(toonDir, 'agents')
+    const memDir = join(toonDir, 'agents')
     const memories: any[] = []
     if (existsSync(memDir)) {
       const depts = readdirSync(memDir).filter(d => statSync(join(memDir, d)).isDirectory())
@@ -1089,7 +1084,7 @@ router.get('/toongine/health', (_req: Request, res: Response) => {
 
     // Graph
     try {
-      const graphDb = join(toonYvon || toonDir, 'graph', 'unified.db')
+      const graphDb = join(toonDir, 'graph', 'unified.db')
       if (existsSync(graphDb)) {
         const graphJson = execSync(
           `python3 -c "import sqlite3,json;db=sqlite3.connect('${graphDb}');n=db.execute('SELECT COUNT(*) FROM unified_nodes').fetchone()[0];e=db.execute('SELECT COUNT(*) FROM unified_edges').fetchone()[0];k=db.execute('SELECT kind,COUNT(*) FROM unified_nodes GROUP BY kind ORDER BY COUNT(*) DESC LIMIT 6').fetchall();db.close();print(json.dumps({'nodes':n,'edges':e,'density':round(e/n,2) if n else 0,'kinds':[{'kind':k,'count':c} for k,c in k]}))"`,
