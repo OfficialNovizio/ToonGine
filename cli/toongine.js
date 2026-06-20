@@ -335,7 +335,7 @@ ToonGine CLI v1.5.4
   toongine doctor        Health check (all ✅ except external services)
   toongine graph         Rebuild knowledge graphs → .toon/graphify/ + .toon/codegraph/
   toongine agents        List all agents from .toon/agents/
-  toongine dashboard     Open live dashboard (port 4200)
+  toongine dashboard     Open live dashboard (port 3000)
   toongine dashboard --hide / --show / --status
   toongine absorb        Migrate originals → .toon/ (safe, with rollback)
   toongine absorb --dry-run   Preview what would move
@@ -1509,7 +1509,7 @@ function dashboard() {
   // ── Config toggles ────────────────────────────────────────────────────────
   if (flag === '--hide' || flag === '--show') {
     const configPath = path.join(process.cwd(), 'toongine.config.json')
-    let config = { dashboard: { showInSettings: true, autoStartOnDev: true, port: 4200, theme: 'dark' } }
+    let config = { dashboard: { showInSettings: true, autoStartOnDev: true, port: 3000, theme: 'dark' } }
     if (fs.existsSync(configPath)) {
       try { config = JSON.parse(fs.readFileSync(configPath, 'utf-8')) } catch {}
     }
@@ -1527,7 +1527,7 @@ function dashboard() {
       console.log('\n  Dashboard config:')
       console.log(`  Show in Settings: ${config.dashboard?.showInSettings !== false ? '✅ Yes' : '🙈 No'}`)
       console.log(`  Auto-start: ${config.dashboard?.autoStartOnDev !== false ? '✅ Yes' : '❌ No'}`)
-      console.log(`  Port: ${config.dashboard?.port || 4200}\n`)
+      console.log(`  Port: ${config.dashboard?.port || 3000}\n`)
     } else {
       console.log('\n  No toongine.config.json — defaults active\n')
     }
@@ -1536,8 +1536,8 @@ function dashboard() {
   console.log('\n  ⚡ Starting TOON Dashboard...\n')
   try {
     const { startDashboard } = require('../dist/dashboard/index.js')
-    startDashboard(4200)
-    console.log('  ✅ Dashboard running at http://localhost:4200')
+    startDashboard(3000)
+    console.log('  ✅ Dashboard running at http://localhost:3000')
     console.log('  Press Ctrl+C to stop\n')
   } catch (e) {
     console.log('  ⚠️  Dashboard not available in this version')

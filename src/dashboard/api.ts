@@ -355,7 +355,7 @@ router.get('/config', (_req: Request, res: Response) => {
     res.json(JSON.parse(readFileSync(configPath, 'utf-8')))
   } else {
     res.json({
-      dashboard: { showInSettings: true, autoStartOnDev: true, port: 4200, theme: 'dark' }
+      dashboard: { showInSettings: true, autoStartOnDev: true, port: 3000, theme: 'dark' }
     })
   }
 })

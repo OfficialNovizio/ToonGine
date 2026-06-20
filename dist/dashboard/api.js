@@ -334,7 +334,7 @@ router.get('/config', (_req, res) => {
     }
     else {
         res.json({
-            dashboard: { showInSettings: true, autoStartOnDev: true, port: 4200, theme: 'dark' }
+            dashboard: { showInSettings: true, autoStartOnDev: true, port: 3000, theme: 'dark' }
         });
     }
 });

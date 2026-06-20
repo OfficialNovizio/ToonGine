@@ -55,7 +55,7 @@ function LoadingSpinner() {
 
 function OverviewPage() {
   const health = usePolling<any>('/api/health', 10000);
-  const live = useWebSocket('ws://localhost:4200/api/live');
+  const live = useWebSocket('ws://localhost:3000/api/live');
   const stats = usePolling<any>('/api/engine/stats?hours=24', 15000);
 
   const h = health.data;
