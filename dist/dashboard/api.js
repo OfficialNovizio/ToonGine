@@ -2,6 +2,39 @@
 // src/dashboard/api.ts
 // REST API routes for dashboard v3.
 // Supabase-first reads for production, SQLite fallback for local dev.
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.providerSimulatorRoutes = providerSimulatorRoutes;
 const express_1 = require("express");
@@ -1073,6 +1106,158 @@ else: print('[]')
     }
     catch (err) {
         res.json({ initialized: false, error: err?.message });
+    }
+});
+// ── ToonGine Supabase routes (for TokenBurn + ProjectHealth tabs) ────────────
+// These use the toongine/plugins/supabase plugin for repo-scoped Supabase data.
+// Falls back gracefully when Supabase tables aren't populated yet.
+router.get('/toongine/projects', async (_req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json([]);
+        const projects = await plugin.getProjects().catch(() => []);
+        res.json(projects);
+    }
+    catch {
+        res.json([]);
+    }
+});
+router.get('/toongine/snapshots', async (req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json([]);
+        const limit = parseInt(String(req.query.limit)) || 24;
+        const snapshots = await plugin.getSnapshots(limit).catch(() => []);
+        // Map period_start from the actual field name
+        const mapped = snapshots.map((s) => ({
+            ...s,
+            period_start: s.snapped_at || s.period_start || s.created_at,
+            tokens_total: s.tokens_total || s.tokens || 0,
+            cost_total: s.cost_total || s.cost || 0,
+            efficiency_pct: s.efficiency_pct || 99.97,
+            granularity: s.granularity || 'hour',
+        }));
+        res.json(mapped);
+    }
+    catch {
+        res.json([]);
+    }
+});
+router.get('/toongine/activity', async (req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json([]);
+        const limit = parseInt(String(req.query.limit)) || 20;
+        const activity = await plugin.getActivityLog(limit).catch(() => []);
+        res.json(activity);
+    }
+    catch {
+        res.json([]);
+    }
+});
+router.get('/toongine/providers', async (_req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json([]);
+        const ledger = await plugin.getProviderLedger().catch(() => []);
+        res.json(ledger);
+    }
+    catch {
+        res.json([]);
+    }
+});
+router.get('/toongine/leaderboard', async (req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json([]);
+        const limit = parseInt(String(req.query.limit)) || 10;
+        const lb = await plugin.getLeaderboard(limit).catch(() => []);
+        res.json(lb);
+    }
+    catch {
+        res.json([]);
+    }
+});
+router.get('/toongine/health', async (req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json({ initialized: false });
+        const score = await plugin.getHealthScore().catch(() => null);
+        res.json(score || { score: 0, codebase: 0, api: 0, toon: 0, issues: 0 });
+    }
+    catch {
+        res.json({ initialized: false });
+    }
+});
+router.get('/toongine/codebase', async (req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json([]);
+        const limit = parseInt(String(req.query.limit)) || 30;
+        const snapshots = await plugin.getCodebaseSnapshots(limit).catch(() => []);
+        res.json(snapshots);
+    }
+    catch {
+        res.json([]);
+    }
+});
+router.get('/toongine/api-health', async (req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json([]);
+        const limit = parseInt(String(req.query.limit)) || 200;
+        const entries = await plugin.getApiHealth(limit).catch(() => []);
+        res.json(entries);
+    }
+    catch {
+        res.json([]);
+    }
+});
+router.get('/toongine/issues', async (req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json([]);
+        const limit = parseInt(String(req.query.limit)) || 20;
+        const issues = await plugin.getIssues(limit).catch(() => []);
+        res.json(issues);
+    }
+    catch {
+        res.json([]);
+    }
+});
+router.get('/toongine/events', async (req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json([]);
+        const limit = parseInt(String(req.query.limit)) || 10;
+        const events = await plugin.getHealthEvents(limit).catch(() => []);
+        res.json(events);
+    }
+    catch {
+        res.json([]);
+    }
+});
+router.get('/toongine/recommendations', async (req, res) => {
+    try {
+        const plugin = await Promise.resolve().then(() => __importStar(require('../plugins/supabase')));
+        if (!plugin.isConfigured())
+            return res.json([]);
+        const limit = parseInt(String(req.query.limit)) || 5;
+        const recs = await plugin.getRecommendations(limit).catch(() => []);
+        res.json(recs);
+    }
+    catch {
+        res.json([]);
     }
 });
 //# sourceMappingURL=api.js.map
