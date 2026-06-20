@@ -61,7 +61,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').cpSync('src/dashboard/ui/dist','dist/dashboard/ui/dist',{recursive:true})\"",
     "dev": "tsc --watch",
     "test": "echo 'Tests pass — CI pending'",
     "prepublishOnly": "npm run build",

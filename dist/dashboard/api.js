@@ -243,12 +243,14 @@ print(json.dumps({'sessions':sessions,'tokensIn':ti,'tokensOut':to}))
         }
         // 6. Agent Efficiency (last 24h from Supabase)
         try {
+            const envPath = (0, path_1.join)(process.cwd(), '.env.toongine');
             const effJson = (0, child_process_1.execSync)(`python3 -c "
 import json,os
-from urllib.request import Request,urlopen
 env={}
-for line in open('/root/yvon/.env.toongine'):
-  if '=' in line: k,v=line.strip().split('=',1); env[k]=v
+env_path = '${envPath.replace(/'/g, "\\'")}'
+if os.path.exists(env_path):
+  for line in open(env_path):
+    if '=' in line: k,v=line.strip().split('=',1); env[k]=v
 url=env.get('TOONGINE_SUPABASE_URL',''); key=env.get('TOONGINE_SUPABASE_KEY','')
 if url and key:
   req=Request(f'{url}/rest/v1/toongine_activity_log?select=agent_name,status,cost_usd,tokens_in,tokens_out&limit=500',
