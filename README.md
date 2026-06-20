@@ -254,33 +254,23 @@ Every agent session now has:
 - **85+ skills** via VPS sync — indexed in engine.bin, matched by task type
 - **Session history** via VPS — CIE retrieves relevant past decisions
 
-#### Complete Uninstall → Reinstall with Hermes Activation
+#### Uninstall & Reinstall
 
 ```bash
-# 1. Wipe everything ToonGine-related
-rm -rf node_modules/toongine
-rm -rf .toon/graph .toon/graphify .toon/codegraph
-rm -f toongine.config.json
+# 1. Remove package (npm handles node_modules cleanup)
+npm uninstall toongine
 
-# 2. Keep your Hermes VPS config (gitignored, safe)
-#    .toon/hermes/config.json — your remote IP lives here, never delete this
-#    .toon/agents/            — agent memory source of truth, keep this too
+# 2. Wipe generated data (optional — skip to keep agents + config)
+rm -rf .toon
 
 # 3. Reinstall fresh
-npm install toongine
+npm install github:OfficialNovizio/ToonGine
 
-# 4. Activate V4 (replaces integrate)
+# 4. Init (rebuilds graph, re-deploys agents)
 npx toongine init
 
-# 5. Reconnect Hermes MCP + memory sync
-npx toongine hermes connect
-
-# 6. Rebuild everything (init does this automatically)
-npx toongine init && npx toongine compile --force
-
-# 7. Verify all systems
+# 5. Verify
 npx toongine doctor
-# Expected: 11/11 operational · 🔗 Hermes: 🔗 Connected · Agent Memory: 24 agents
 ```
 
 #### What Hermes Provides (when connected)
