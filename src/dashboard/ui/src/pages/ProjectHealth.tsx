@@ -193,7 +193,7 @@ function IssuesPanel({ issues }: { issues: IssueEntry[] }) {
         <div>
           {issues.slice(0, 6).map(i => {
             const s = sevIcons[i.severity] || sevIcons[4]
-            const age = Math.round((Date.now() - new Date(i.opened_at).getTime()) / 86400000)
+            const age = Math.round((Date.now() - new Date(i.created_at).getTime()) / 86400000)
             return (
               <div key={i.id} style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0',
@@ -346,7 +346,7 @@ export default function ProjectHealth() {
               {health && (
                 <>
                   <InsightCard type="good" icon="📈">
-                    <strong>{health.topInsight}</strong> · Score {health.score}/100 · Codebase: {health.codebase.toFixed(0)} · API: {health.api.toFixed(0)} · TOON: {health.toon.toFixed(0)} · Issues: {health.issues.toFixed(0)}
+                    <strong>{health.top_insight}</strong> · Score {health.score}/100 · Codebase: {health.codebase.toFixed(0)} · API: {health.api.toFixed(0)} · TOON: {health.toon.toFixed(0)} · Issues: {health.issues.toFixed(0)}
                   </InsightCard>
                   {health.trend_direction !== 'stable' && (
                     <InsightCard type={health.trend_direction === 'up' ? 'good' : 'warn'} icon={health.trend_direction === 'up' ? '▲' : '▼'}>
