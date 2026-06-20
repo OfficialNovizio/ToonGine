@@ -141,14 +141,42 @@ export interface ApiHealthEntry {
 export interface IssueEntry {
     id: number;
     repo_id: string;
-    severity: number;
+    priority: number;
+    category: string;
     source: string;
     title: string;
     detail: string;
-    resolved: boolean;
-    resolution_time_h: number | null;
-    opened_at: string;
+    file_path: string | null;
+    line_number: number | null;
+    status: 'open' | 'in_progress' | 'resolved' | 'wontfix';
+    severity: number;
+    impact_points: number;
+    effort_minutes: number;
+    assigned_to: string | null;
+    created_at: string;
+    updated_at: string;
     resolved_at: string | null;
+}
+export interface ToonHealthEntry {
+    id: number;
+    repo_id: string;
+    sampled_at: string;
+    files_cached: number;
+    cache_size_bytes: number;
+    graph_nodes: number;
+    graph_edges: number;
+    graph_size_bytes: number;
+    total_docs: number;
+    total_files: number;
+    toon_dir_size_bytes: number;
+    agents_with_skills: number;
+    total_skills: number;
+    avg_skills_per_agent: number;
+    cache_stale: boolean;
+    graph_orphaned: boolean;
+    compression_ratio: number;
+    compile_errors: number;
+    graph_errors: number;
 }
 export interface HealthEvent {
     id: number;
@@ -189,8 +217,10 @@ export interface HealthScore {
 export declare function getCodebaseSnapshots(limit?: number): Promise<CodebaseSnapshot[]>;
 /** Get API health for last 24h. */
 export declare function getApiHealth(limit?: number): Promise<ApiHealthEntry[]>;
-/** Get open issues, ordered by severity. */
+/** Get open issues, ordered by priority. */
 export declare function getIssues(limit?: number): Promise<IssueEntry[]>;
+/** Get TOON compression health data. */
+export declare function getToonHealth(limit?: number): Promise<ToonHealthEntry[]>;
 /** Get health events timeline. */
 export declare function getHealthEvents(limit?: number): Promise<HealthEvent[]>;
 /** Get active recommendations, ordered by priority. */

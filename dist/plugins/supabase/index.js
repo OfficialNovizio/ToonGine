@@ -18,6 +18,7 @@ exports.getLeaderboard = getLeaderboard;
 exports.getCodebaseSnapshots = getCodebaseSnapshots;
 exports.getApiHealth = getApiHealth;
 exports.getIssues = getIssues;
+exports.getToonHealth = getToonHealth;
 exports.getHealthEvents = getHealthEvents;
 exports.getRecommendations = getRecommendations;
 exports.getHealthScore = getHealthScore;
@@ -207,12 +208,20 @@ async function getApiHealth(limit = 200) {
         limit: String(limit),
     });
 }
-/** Get open issues, ordered by severity. */
+/** Get open issues, ordered by priority. */
 async function getIssues(limit = 20) {
     return sf('toongine_issues', {
         repo_id: `eq.${resolveRepo()}`,
-        resolved: 'eq.false',
-        order: 'severity.asc,opened_at.desc',
+        status: 'eq.open',
+        order: 'priority.asc,created_at.desc',
+        limit: String(limit),
+    });
+}
+/** Get TOON compression health data. */
+async function getToonHealth(limit = 30) {
+    return sf('toongine_toon_health', {
+        repo_id: `eq.${resolveRepo()}`,
+        order: 'sampled_at.desc',
         limit: String(limit),
     });
 }
@@ -255,30 +264,50 @@ async function getHealthScore() {
     catch {
         apiScore = 99;
     }
-    // TOON: from snapshots efficiency
-    const toonSnaps = await sf('toongine_snapshots', {
-        repo_id: `eq.${resolveRepo()}`,
-        granularity: 'eq.hour',
-        order: 'slot.asc',
-        limit: '24',
-    });
-    const toonScore = toonSnaps.length > 0
-        ? toonSnaps.reduce((s, sn) => s + sn.efficiency_pct, 0) / toonSnaps.length
-        : 99.97;
-    // Issues: 100 - (critical*15) - (high*8) - (medium*3)
-    const openIssues = issues.filter(i => !i.resolved);
+    // TOON: prefer real health data, fallback to snapshot efficiency
+    const toonHealth = await getToonHealth(1);
+    let toonScore = 99.97;
+    if (toonHealth.length > 0) {
+        const latest = toonHealth[0];
+        toonScore = Math.round(latest.compression_ratio * 100);
+        if (latest.cache_stale)
+            toonScore -= 5;
+        if (latest.graph_orphaned)
+            toonScore -= 10;
+        if (latest.compile_errors > 0)
+            toonScore -= 5;
+        if (latest.graph_errors > 0)
+            toonScore -= 5;
+        toonScore = Math.max(0, toonScore);
+    }
+    else {
+        // Fallback: use snapshot efficiency
+        const toonSnaps = await sf('toongine_snapshots', {
+            repo_id: `eq.${resolveRepo()}`,
+            granularity: 'eq.hour',
+            order: 'slot.asc',
+            limit: '24',
+        });
+        toonScore = toonSnaps.length > 0
+            ? toonSnaps.reduce((s, sn) => s + sn.efficiency_pct, 0) / toonSnaps.length
+            : 99.97;
+    }
+    // Issues: 100 - (P0*15) - (P1*8) - (P2*3)
+    const openIssues = issues.filter(i => i.status === 'open');
     let issuePenalty = 0;
     for (const i of openIssues) {
-        if (i.severity === 1)
+        if (i.priority === 0)
             issuePenalty += 15;
-        else if (i.severity === 2)
+        else if (i.priority === 1)
             issuePenalty += 8;
-        else if (i.severity === 3)
+        else if (i.priority === 2)
             issuePenalty += 3;
+        else
+            issuePenalty += 1;
     }
     const issuesScore = Math.max(0, 100 - issuePenalty);
     // Weighted composite
-    const score = Math.round(codebaseScore * 0.30 + apiScore * 0.30 + toonScore * 0.25 + issuesScore * 0.15);
+    const score = Math.round(codebaseScore * 0.25 + apiScore * 0.25 + toonScore * 0.25 + issuesScore * 0.25);
     // Trend: compare snapshots[0] vs snapshots[-1] via slope
     let trend = 0;
     let direction = 'stable';
@@ -292,8 +321,8 @@ async function getHealthScore() {
     }
     // Top insight
     let top_insight = 'All systems nominal';
-    if (openIssues.filter(i => i.severity <= 2).length > 0) {
-        top_insight = `${openIssues.filter(i => i.severity <= 2).length} issues need attention`;
+    if (openIssues.filter(i => i.priority <= 1).length > 0) {
+        top_insight = `${openIssues.filter(i => i.priority <= 1).length} issues need attention`;
     }
     if (codebaseScore < 80)
         top_insight = 'Codebase health needs attention';
