@@ -1,0 +1,29 @@
+# npmignore — explicit control to fix npm github: protocol bug on Windows
+# include everything by default, then explicitly exclude
+
+# Exclude source/build artifacts  
+src/
+cli/
+scripts/
+tests/
+supabase/
+docs/
+templates/
+
+# Exclude config files
+.babelrc
+.eslintrc.json
+.gitattributes
+_.babelrc_
+tailwind.config.js
+postcss.config.js
+tsconfig.json
+vite.config.ts
+vercel.json
+next.config.ts
+
+# Exclude env/docs
+.env.toongine
+env.example.toongine
+WORKFLOW.md
+SKILL.md

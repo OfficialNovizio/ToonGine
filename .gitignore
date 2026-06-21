@@ -20,7 +20,6 @@ docs/
 .babelrc
 .eslintrc.json
 .gitattributes
-.npmignore
 _.babelrc_
 tailwind.config.js
 postcss.config.js
