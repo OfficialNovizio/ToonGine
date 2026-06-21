@@ -289,6 +289,52 @@ def main():
             }
             supabase_post("toongine_provider_ledger", payload)
 
+        # ── Agent Memory Sync ───────────────────────────────────────────────────
+        # Push MEMORY.md content to Supabase (Vercel dashboard can't read VPS files)
+        memory_count = 0
+        try:
+            toon_dir = Path(config.get("_cwd", "")) / ".toon" if config.get("_cwd") else None
+            if not toon_dir:
+                # Derive from first session's cwd
+                first_cwd = sess_list[0]["cwd"] if sess_list else None
+                if first_cwd:
+                    toon_dir = Path(first_cwd) / ".toon"
+            if not toon_dir or not toon_dir.exists():
+                toon_dir = Path("/root") / repo_id.split("/")[-1] / ".toon"  # fallback
+            agent_dir = toon_dir / "agents" if toon_dir else None
+            if agent_dir and agent_dir.exists():
+                for dept_dir in agent_dir.iterdir():
+                    if not dept_dir.is_dir():
+                        continue
+                    for agent_sub in dept_dir.iterdir():
+                        if not agent_sub.is_dir():
+                            continue
+                        mem_file = agent_sub / "MEMORY.md"
+                        if not mem_file.exists():
+                            continue
+                        mtime = mem_file.stat().st_mtime
+                        size = mem_file.stat().st_size
+                        content = mem_file.read_text()[:200]
+                        # Health heuristic
+                        health = 100
+                        if size < 200: health -= 30
+                        if not content.startswith("#"): health -= 10
+                        if "undefined" in content or "null" in content: health -= 5
+                        health = max(0, min(100, health))
+                        supabase_post("toongine_agent_memories", {
+                            "repo_id": repo_id,
+                            "agent_id": f"{dept_dir.name}/{agent_sub.name}",
+                            "agent_name": agent_sub.name,
+                            "department": dept_dir.name,
+                            "content_size": size,
+                            "health_score": health,
+                            "last_modified": datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat(),
+                        }, on_conflict="repo_id,agent_id")
+                        memory_count += 1
+                log(f"    Memory: {memory_count} agents synced")
+        except Exception as e:
+            log(f"    ⚠️ Memory sync: {e}")
+
     # ── Sync agents ───────────────────────────────────────────────────────────
     if herm_agents and project_configs:
         # Use first project as default for agent sync
