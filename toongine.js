@@ -486,6 +486,10 @@ function init() {
     if (fs.existsSync(depsSrc)) {
       fs.copyFileSync(depsSrc, path.join(agentDir, 'DEPARTMENTS.md'))
     }
+  } else {
+    // Templates not shipped (git-cloned on Windows) — create stubs from registry
+    deployAgentStubs(agentDir)
+    agentsCreated = 24
   }
   console.log(`  ✅ ${agentsCreated} new agents deployed to .toon/agents/`)
 
@@ -924,6 +928,53 @@ function integrate() {
 function version() { console.log('ToonGine v1.5.5') }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
+
+function deployAgentStubs(agentDir) {
+  // Built-in agent registry — creates stub MEMORY.md when templates not shipped
+  const AGENTS = [
+    ['CEO', 'marcus', 'CEO', 'Command'],
+    ['CEO', 'diana', 'COO', 'Command'],
+    ['Command', 'board', 'Governance Board', 'Command'],
+    ['Finance', 'felix', 'CFO', 'Finance'],
+    ['Legal', 'comply', 'Compliance Officer', 'Legal'],
+    ['Legal', 'docs', 'Documentation Officer', 'Legal'],
+    ['Legal', 'guard', 'IP Protection Officer', 'Legal'],
+    ['Marketing', 'kai', 'CMO', 'Marketing'],
+    ['Marketing', 'lena', 'Brand Strategist', 'Marketing'],
+    ['Marketing', 'nate', 'Growth Lead', 'Marketing'],
+    ['Marketing', 'rio', 'Ads Manager', 'Marketing'],
+    ['Marketing', 'atlas', 'Art Director', 'Marketing'],
+    ['Marketing', 'pixel', 'Production', 'Marketing'],
+    ['Psychology', 'kahneman', 'Cognitive Bias Validator', 'Psychology'],
+    ['Research', 'depth', 'Deep Researcher', 'Research'],
+    ['Research', 'synth', 'Synthesis Lead', 'Research'],
+    ['Research', 'vette', 'Fact Verifier', 'Research'],
+    ['Sense', 'forge', 'Method Discovery', 'Sense'],
+    ['Sense', 'radar', 'Market Intelligence', 'Sense'],
+    ['Sense', 'scout', 'Tool Discovery', 'Sense'],
+    ['Technical', 'dev', 'Tech Lead', 'Technical'],
+    ['Technical', 'mia', 'Frontend Lead', 'Technical'],
+    ['Technical', 'raj', 'Backend Lead', 'Technical'],
+    ['Technical', 'quinn', 'QA Lead', 'Technical'],
+  ]
+  for (const [dept, id, role, _] of AGENTS) {
+    const d = path.join(agentDir, dept, id)
+    mkdir(d)
+    const memPath = path.join(d, 'MEMORY.md')
+    if (!fs.existsSync(memPath)) {
+      fs.writeFileSync(memPath, `# ${id.charAt(0).toUpperCase() + id.slice(1)} — ${role}\n\nAgent stub — deploy from templates or configure skills to begin.\n`)
+    }
+    const manifestPath = path.join(d, 'manifest.toon')
+    if (!fs.existsSync(manifestPath)) {
+      fs.writeFileSync(manifestPath, `title: ${role}\ndepartment: ${dept}\nlevel: ${dept === 'Command' || dept === 'CEO' ? '1' : dept === 'Finance' || dept === 'Psychology' ? '2' : '3'}\n`)
+    }
+  }
+  // Departments README
+  const depsPath = path.join(agentDir, 'DEPARTMENTS.md')
+  if (!fs.existsSync(depsPath)) {
+    fs.writeFileSync(depsPath, '# YVON Agent Departments\n\n| Department | Agents | Level |\n|---|---|---|\n| Command | Board | L1 |\n| CEO | Marcus | L1 |\n| COO | Diana | L1 |\n| Finance | Felix | L2 |\n| Psychology | Kahneman | L2 |\n| Legal | Comply, Docs, Guard | L2–L3 |\n| Research | Vette, Depth, Synth | L3 |\n| Sense | Scout, Radar, Forge | L3 |\n| Marketing | Kai, Lena, Rio, Nate, Atlas, Pixel | L2–L3 |\n| Technical | Dev, Mia, Raj, Quinn | L2–L3 |\n')
+  }
+}
 
 function mkdir(p) { fs.mkdirSync(p, { recursive: true }) }
 function copyDir(s, d) { mkdir(d); for (const e of fs.readdirSync(s, { withFileTypes: true })) { const sp = path.join(s, e.name), dp = path.join(d, e.name); e.isDirectory() ? copyDir(sp, dp) : fs.copyFileSync(sp, dp) } }
