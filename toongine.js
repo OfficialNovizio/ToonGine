@@ -921,7 +921,7 @@ function integrate() {
   console.log('')
 }
 
-function version() { console.log('ToonGine v1.5.0') }
+function version() { console.log('ToonGine v1.5.5') }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
