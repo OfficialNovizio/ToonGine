@@ -52,12 +52,6 @@
   "bin": {
     "toongine": "./toongine.js"
   },
-  "files": [
-    "dist/",
-    "toongine.js",
-    "README.md",
-    "LICENSE"
-  ],
   "scripts": {
     "test": "echo ok",
     "prepare": "",
@@ -65,8 +59,17 @@
     "preuninstall": "echo Removing ToonGine"
   },
   "keywords": [
-    "ai", "agent", "llm", "context", "compression", "toon",
-    "knowledge-graph", "hermes", "claude", "openai", "deepseek"
+    "ai",
+    "agent",
+    "llm",
+    "context",
+    "compression",
+    "toon",
+    "knowledge-graph",
+    "hermes",
+    "claude",
+    "openai",
+    "deepseek"
   ],
   "repository": {
     "type": "git",
