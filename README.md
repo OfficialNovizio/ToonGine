@@ -14,7 +14,7 @@
 ## Quick Install
 
 ```bash
-npm install -g https://github.com/OfficialNovizio/ToonGine/releases/download/v1.5.5/toongine-1.5.5.tgz
+npm install -g github:OfficialNovizio/ToonGine
 npx toongine init      # one command — builds graph, deploys agents, starts watchers
 npx toongine doctor    # verify — 11/11 operational
 ```
