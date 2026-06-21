@@ -540,6 +540,28 @@ function init() {
   console.log(`\n  Next: npx toongine doctor   (health check)`)
   console.log(`        npx toongine compile   (compress everything)`)
   console.log(`        npx toongine stats     (runtime savings)`)
+
+  // ─── Auto-push to GitHub (so YVON OS discovers it) ───────────────────
+  try {
+    const gitCheck = require('child_process').execSync('git rev-parse --is-inside-work-tree 2>/dev/null', { cwd, encoding: 'utf-8', timeout: 5000 }).trim()
+    if (gitCheck === 'true') {
+      console.log('\n  🔄 Auto-pushing .toon/ to GitHub...')
+      require('child_process').execSync('git add .toon/ toongine.config.json CLAUDE.md 2>/dev/null', { cwd, timeout: 10000 })
+      const diffCheck = require('child_process').execSync('git diff --cached --quiet 2>/dev/null; echo $?', { cwd, encoding: 'utf-8', timeout: 5000 }).trim()
+      if (diffCheck !== '0') {
+        require('child_process').execSync('git commit -m "toongine: init agents + graphs + config" 2>/dev/null', { cwd, timeout: 10000 })
+        require('child_process').execSync('git push origin HEAD 2>/dev/null', { cwd, timeout: 30000 })
+        console.log('  ✅ Pushed to GitHub — YVON OS will auto-discover')
+      } else {
+        console.log('  ℹ️  Already committed — skipping push')
+      }
+    } else {
+      console.log('\n  ℹ️  Not a git repo — push .toon/ manually for YVON OS discovery')
+    }
+  } catch (e) {
+    console.log(`\n  ⚠️  Auto-push failed: ${e.message?.slice(0, 60) || e}`)
+    console.log('  Push .toon/ to GitHub manually to connect to YVON OS')
+  }
 }
 
 function doctor() {
