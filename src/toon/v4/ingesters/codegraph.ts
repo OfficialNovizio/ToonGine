@@ -15,9 +15,9 @@ export function ingestCodegraph(
   const start = Date.now()
   const errors: string[] = []
 
-  // Check if codegraph is installed
+  // Check if codegraph is installed (global or via npx)
   try {
-    execSync('which codegraph', { stdio: 'pipe' })
+    execSync('which codegraph 2>/dev/null || npx @colbymchenry/codegraph version 2>/dev/null', { stdio: 'pipe' })
   } catch {
     return {
       tool: 'codegraph',
@@ -44,7 +44,7 @@ export function ingestCodegraph(
 
   try {
     // ─── Get status ─────────────────────────────────────────────────────
-    const statusOut = execSync('codegraph status --json', {
+    const statusOut = execSync('codegraph status --json 2>/dev/null || npx @colbymchenry/codegraph status --json 2>/dev/null', {
       cwd: projectRoot,
       stdio: 'pipe',
       timeout: 15_000,
@@ -54,7 +54,7 @@ export function ingestCodegraph(
     try { stats = JSON.parse(statusOut) } catch { /* non-JSON output */ }
 
     // ─── Get file list ──────────────────────────────────────────────────
-    const filesOut = execSync('codegraph files --json', {
+    const filesOut = execSync('codegraph files --json 2>/dev/null || npx @colbymchenry/codegraph files --json 2>/dev/null', {
       cwd: projectRoot,
       stdio: 'pipe',
       timeout: 15_000,

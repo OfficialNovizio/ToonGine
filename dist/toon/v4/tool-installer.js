@@ -52,20 +52,38 @@ function installCodegraph(projectRoot) {
     const toolsDir = (0, path_1.join)(projectRoot, '.toon', 'tools');
     if (!(0, fs_1.existsSync)(toolsDir))
         (0, fs_1.mkdirSync)(toolsDir, { recursive: true });
+    // Check if already installed globally
+    try {
+        (0, child_process_1.execSync)('which codegraph 2>/dev/null', { stdio: 'pipe' });
+        const out = (0, child_process_1.execSync)('codegraph version 2>/dev/null || npx @colbymchenry/codegraph version 2>/dev/null', { stdio: 'pipe', timeout: 5000 }).toString();
+        return { name: 'codegraph', installed: true, path: 'npm global', version: extractVersion(out) };
+    }
+    catch { }
+    // Try local install (skip if exists)
     const dest = (0, path_1.join)(toolsDir, 'codegraph');
-    // Skip if already installed
     if ((0, fs_1.existsSync)((0, path_1.join)(dest, 'package.json'))) {
         return { name: 'codegraph', installed: true, path: dest, version: 'local' };
     }
     try {
-        (0, child_process_1.execSync)(`npm install --prefix "${dest}" @colbymchenry/codegraph 2>&1 || curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh 2>&1`, {
+        // Install globally first (preferred, puts codegraph on PATH)
+        (0, child_process_1.execSync)('npm install -g @colbymchenry/codegraph 2>&1', {
             stdio: 'pipe',
             timeout: 60000,
         });
-        return { name: 'codegraph', installed: true, path: dest, version: 'latest' };
+        return { name: 'codegraph', installed: true, path: 'npm global', version: 'latest' };
     }
     catch (err) {
-        return { name: 'codegraph', installed: false, path: dest, version: '', error: err.stderr?.toString() || err.message };
+        // Fallback: install locally in .toon/tools/
+        try {
+            (0, child_process_1.execSync)(`npm install --prefix "${dest}" @colbymchenry/codegraph 2>&1`, {
+                stdio: 'pipe',
+                timeout: 60000,
+            });
+            return { name: 'codegraph', installed: true, path: dest, version: 'local' };
+        }
+        catch (err2) {
+            return { name: 'codegraph', installed: false, path: '', version: '', error: err2.stderr?.toString() || err2.message };
+        }
     }
 }
 function ensureAllTools(projectRoot) {

@@ -59,21 +59,37 @@ export function installCodegraph(projectRoot: string): ToolStatus {
   const toolsDir = join(projectRoot, '.toon', 'tools')
   if (!existsSync(toolsDir)) mkdirSync(toolsDir, { recursive: true })
 
-  const dest = join(toolsDir, 'codegraph')
+  // Check if already installed globally
+  try {
+    execSync('which codegraph 2>/dev/null', { stdio: 'pipe' })
+    const out = execSync('codegraph version 2>/dev/null || npx @colbymchenry/codegraph version 2>/dev/null', { stdio: 'pipe', timeout: 5000 }).toString()
+    return { name: 'codegraph', installed: true, path: 'npm global', version: extractVersion(out) }
+  } catch {}
 
-  // Skip if already installed
+  // Try local install (skip if exists)
+  const dest = join(toolsDir, 'codegraph')
   if (existsSync(join(dest, 'package.json'))) {
     return { name: 'codegraph', installed: true, path: dest, version: 'local' }
   }
 
   try {
-    execSync(`npm install --prefix "${dest}" @colbymchenry/codegraph 2>&1 || curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh 2>&1`, {
+    // Install globally first (preferred, puts codegraph on PATH)
+    execSync('npm install -g @colbymchenry/codegraph 2>&1', {
       stdio: 'pipe',
       timeout: 60_000,
     })
-    return { name: 'codegraph', installed: true, path: dest, version: 'latest' }
+    return { name: 'codegraph', installed: true, path: 'npm global', version: 'latest' }
   } catch (err: any) {
-    return { name: 'codegraph', installed: false, path: dest, version: '', error: err.stderr?.toString() || err.message }
+    // Fallback: install locally in .toon/tools/
+    try {
+      execSync(`npm install --prefix "${dest}" @colbymchenry/codegraph 2>&1`, {
+        stdio: 'pipe',
+        timeout: 60_000,
+      })
+      return { name: 'codegraph', installed: true, path: dest, version: 'local' }
+    } catch (err2: any) {
+      return { name: 'codegraph', installed: false, path: '', version: '', error: err2.stderr?.toString() || err2.message }
+    }
   }
 }
 

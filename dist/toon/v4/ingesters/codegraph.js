@@ -11,9 +11,9 @@ const bridge_types_1 = require("../bridge-types");
 function ingestCodegraph(unified, projectRoot) {
     const start = Date.now();
     const errors = [];
-    // Check if codegraph is installed
+    // Check if codegraph is installed (global or via npx)
     try {
-        (0, child_process_1.execSync)('which codegraph', { stdio: 'pipe' });
+        (0, child_process_1.execSync)('which codegraph 2>/dev/null || npx @colbymchenry/codegraph version 2>/dev/null', { stdio: 'pipe' });
     }
     catch {
         return {
@@ -39,7 +39,7 @@ function ingestCodegraph(unified, projectRoot) {
     }
     try {
         // ─── Get status ─────────────────────────────────────────────────────
-        const statusOut = (0, child_process_1.execSync)('codegraph status --json', {
+        const statusOut = (0, child_process_1.execSync)('codegraph status --json 2>/dev/null || npx @colbymchenry/codegraph status --json 2>/dev/null', {
             cwd: projectRoot,
             stdio: 'pipe',
             timeout: 15000,
@@ -50,7 +50,7 @@ function ingestCodegraph(unified, projectRoot) {
         }
         catch { /* non-JSON output */ }
         // ─── Get file list ──────────────────────────────────────────────────
-        const filesOut = (0, child_process_1.execSync)('codegraph files --json', {
+        const filesOut = (0, child_process_1.execSync)('codegraph files --json 2>/dev/null || npx @colbymchenry/codegraph files --json 2>/dev/null', {
             cwd: projectRoot,
             stdio: 'pipe',
             timeout: 15000,
