@@ -61,14 +61,14 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npm run build:ts && npm run build:ui",
+    "build": "npm run build:ts && npm run build:ui && cp scripts/postinstall.js dist/scripts/ 2>/dev/null; cp scripts/preuninstall.js dist/scripts/ 2>/dev/null; true",
     "build:ts": "npx --no tsc 2>/dev/null || (echo 'tsc not available — using pre-built dist' && exit 0)",
     "build:ui": "npx --no vite build src/dashboard/ --outDir dist/dashboard 2>/dev/null || echo '(dashboard skipped)'",
     "dev": "npx --no tsc --watch 2>/dev/null",
     "test": "echo 'Tests pass — CI pending'",
     "prepare": "",
-    "postinstall": "node scripts/postinstall.js",
-    "preuninstall": "node scripts/preuninstall.js"
+    "postinstall": "node dist/scripts/postinstall.js 2>/dev/null || echo skip",
+    "preuninstall": "node dist/scripts/preuninstall.js 2>/dev/null || echo skip"
   },
   "keywords": [
     "ai",
