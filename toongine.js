@@ -461,6 +461,7 @@ function init() {
   let agentsCreated = 0
 
   if (fs.existsSync(templateDir)) {
+    // Templates shipped with package — deploy agents
     const depts = fs.readdirSync(templateDir).filter(d => {
       const full = path.join(templateDir, d)
       return fs.statSync(full).isDirectory() && d !== 'skills' && d !== 'brands' && d !== 'DEPARTMENTS.md'

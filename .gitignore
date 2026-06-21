@@ -5,3 +5,6 @@ node_modules/
 .toon/tmp/
 .toon/cache/
 toongine-1.5.5.tgz
+
+# Templates — 918 deep-path files, skip on Windows git clone
+templates/
