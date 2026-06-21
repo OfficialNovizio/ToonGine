@@ -1,10 +1,34 @@
 node_modules/
 *.js.map
 .DS_Store
+.toon/
+
+# Generated — not part of the package
+toongine-1.5.5.tgz
+templates/
+src/
+cli/
+scripts/
+tests/
+supabase/
+docs/
 .toon/graph/
 .toon/tmp/
 .toon/cache/
-toongine-1.5.5.tgz
 
-# Templates — 918 deep-path files, skip on Windows git clone
-templates/
+# Configuration
+.babelrc
+.eslintrc.json
+.gitattributes
+.npmignore
+_.babelrc_
+tailwind.config.js
+postcss.config.js
+tsconfig.json
+vite.config.ts
+vercel.json
+.env.toongine
+env.example.toongine
+WORKFLOW.md
+SKILL.md
+next.config.ts
