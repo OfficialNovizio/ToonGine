@@ -39,17 +39,12 @@ export function startWatcher(projectRoot: string): WatcherStatus[] {
   }
 
   try {
+    // Skip hidden dirs and generated dirs to stay under fs.inotify limits
+    const skipDirs = /node_modules|\.next|\.git|dist|\.toon|graphify-out|\.code-review-graph|\.codegraph/
     const watcher = watch(watchDir, { recursive: true }, (eventType, filename) => {
       if (!filename) return
-
-      // Only rebuild on source file changes
+      if (skipDirs.test(filename)) return
       if (!/\.(ts|tsx|js|jsx|py|md|css|json|yml|yaml)$/.test(filename)) return
-      // Skip generated/build directories
-      if (filename.includes('node_modules') || filename.includes('.next') ||
-          filename.includes('dist') || filename.includes('.toon') ||
-          filename.includes('graphify-out') || filename.includes('.code-review-graph') ||
-          filename.includes('.codegraph')) return
-      // Rate limit
       if (filename.includes('.lock')) return
 
       const existing = _watchers.get('file-watcher')
@@ -65,6 +60,14 @@ export function startWatcher(projectRoot: string): WatcherStatus[] {
     })
 
     _watchers.set('file-watcher', { watcher, status, timer: null })
+    // Catch watcher errors (ENOSPC, etc.) gracefully
+    watcher.on('error', (err: any) => {
+      if (err.code === 'ENOSPC') {
+        console.warn('[toongine] Watch limit reached — watcher disabled. Increase fs.inotify.max_user_watches.')
+      }
+      status.running = false
+      status.errors++
+    })
     statuses.push(status)
   } catch (err: any) {
     status.running = false

@@ -943,7 +943,8 @@ function compile() {
     const report = activate(cwd)
     
     console.log(`  🧬 Graph: ${report.graphNodes} nodes / ${report.graphEdges} edges`)
-    console.log(`  🔧 Tools: ${report.tools.filter(t => t.installed).length}/${report.tools.length} installed`)
+    const installedTools = Object.values(report.tools).filter(function(t) { return t.installed })
+    console.log(`  🔧 Tools: ${installedTools.length}/${Object.keys(report.tools).length} installed`)
     if (report.errors.length > 0) {
       report.errors.forEach(e => console.log(`  ⚠️  ${e}`))
     }
