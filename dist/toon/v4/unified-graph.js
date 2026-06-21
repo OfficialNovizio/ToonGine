@@ -1,21 +1,32 @@
 "use strict";
 // src/toon/v4/unified-graph.ts
 // Unified knowledge graph — single SQLite database ingesting from all 3 tools.
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UnifiedGraph = void 0;
 exports.createUnifiedGraph = createUnifiedGraph;
-const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
 const unified_schema_1 = require("./unified-schema");
 const fs_1 = require("fs");
 const path_1 = require("path");
+// Lazy-load better-sqlite3 (optional dependency — N/A on Windows)
+let Database = null;
+function getSQLite() {
+    if (Database)
+        return Database;
+    try {
+        Database = require('better-sqlite3');
+        return Database;
+    }
+    catch {
+        throw new Error('better-sqlite3 is not available. Install it: npm install better-sqlite3\n' +
+            'This is an optional dependency and may fail on Windows without build tools.');
+    }
+}
 // ─── UnifiedGraph Class ──────────────────────────────────────────────────────
 class UnifiedGraph {
     constructor(dbPath) {
         this.dbPath = dbPath;
-        this.db = new better_sqlite3_1.default(dbPath);
+        const SQLite = getSQLite();
+        this.db = new SQLite(dbPath);
         this.db.pragma('journal_mode = WAL');
         this.db.pragma('foreign_keys = ON');
     }

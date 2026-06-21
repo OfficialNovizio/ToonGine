@@ -67,7 +67,6 @@
     "dev": "npx --no tsc --watch 2>/dev/null",
     "test": "echo 'Tests pass — CI pending'",
     "prepare": "",
-    "prepublishOnly": "npm run build",
     "postinstall": "node scripts/postinstall.js",
     "preuninstall": "node scripts/preuninstall.js"
   },
@@ -107,10 +106,12 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "better-sqlite3": "^12.10.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "recharts": "^3.8.1",
     "ws": "^8.21.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^12.10.0"
   }
 }
