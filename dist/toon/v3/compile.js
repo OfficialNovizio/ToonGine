@@ -7,7 +7,10 @@
 // Loaded once at first agent call, cached in memory forever.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.compile = compile;
-const stripper_1 = require("../v2/stripper");
+function strip(text) {
+    const stripped = text.replace(/^#{1,6}\s+/gm, '').replace(/```[\s\S]*?```/g, '').replace(/`[^`]+`/g, '').replace(/^---[\s\S]*?---/gm, '').replace(/^\|.+\|$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
+    return { output: stripped, savingsPercent: text.length > 0 ? Math.round((1 - stripped.length / text.length) * 100) : 0 };
+}
 const stemmer_1 = require("./stemmer");
 const bpe_1 = require("./bpe");
 const crypto_1 = require("crypto");
@@ -67,7 +70,7 @@ function compile(options) {
         if (!(0, fs_1.existsSync)(file))
             continue;
         const content = (0, fs_1.readFileSync)(file, 'utf-8');
-        const stripped = (0, stripper_1.strip)(content);
+        const stripped = strip(content);
         // Tag Hermes Agent data with 'hermes/' prefix for priority matching
         const resolvedFile = (0, path_1.resolve)(file);
         const resolvedHermesHome = (0, path_1.resolve)(hermesHome);

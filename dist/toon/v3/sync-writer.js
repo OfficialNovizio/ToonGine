@@ -18,7 +18,10 @@ exports.deleteFile = deleteFile;
 exports.writeMany = writeMany;
 const fs_1 = require("fs");
 const path_1 = require("path");
-const stripper_1 = require("../v2/stripper");
+function strip(text) {
+    const stripped = text.replace(/^#{1,6}\s+/gm, '').replace(/```[\s\S]*?```/g, '').replace(/`[^`]+`/g, '').replace(/^---[\s\S]*?---/gm, '').replace(/^\|.+\|$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
+    return { output: stripped, savingsPercent: text.length > 0 ? Math.round((1 - stripped.length / text.length) * 100) : 0 };
+}
 const compile_1 = require("./compile");
 // ─── Path Detection ───────────────────────────────────────────────────────────
 const TOONABLE_PREFIXES = [
@@ -133,7 +136,7 @@ function getToonPath(relativePath, root) {
     return (0, path_1.join)(root, '.toon', toToonFilename(relativePath));
 }
 function compressForToon(content, path) {
-    const stripped = (0, stripper_1.strip)(content);
+    const stripped = strip(content);
     const ext = (0, path_1.extname)(path);
     const header = `#TOON src=${path} compressed=${new Date().toISOString()} savings=${stripped.savingsPercent}%\n`;
     if (ext === '.json') {

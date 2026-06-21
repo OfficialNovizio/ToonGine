@@ -16,8 +16,8 @@
 //   import { toonifyAll } from 'toongine/toon/auto'
 //   const result = toonifyAll('/path/to/project')
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteFile = exports.writeFile = exports.resolverStats = exports.clearResolveCache = exports.resolveMany = exports.resolve = exports.bpeDecode = exports.bpeEncode = exports.trainBPE = exports.stem = exports.createV3Engine = exports.compile = exports.strip = exports.expandWithDictionary = exports.parseDictionaryBlock = exports.decodeToonResponse = exports.ABBREV_MAP = exports.generateDictionaryString = exports.encodePrompt = exports.encodeMemory = exports.encodeDocument = exports.toonifyHermes = exports.compressHermesSkill = exports.computeHermesSessionDelta = exports.compressHermesMemory = exports.autoToonMiddleware = exports.toonifyAll = exports.injectToon = exports.scanProject = exports.runHealthChecks = exports.metrics = exports.injectDashboard = exports.ToonGineDashboard = exports.createMCPClient = exports.invalidateConfig = exports.getConfig = exports.jaccardEstimate = exports.minhashSignature = exports.blastRadius = exports.ContextPriorityQueue = exports.TfidfIndex = exports.BloomFilter = exports.computeDelta = exports.getOrCreateState = exports.dictToLine = exports.buildDictionary = exports.compress = exports.toon = exports.classifyTask = exports.buildCieContext = void 0;
-exports.pushToHermes = exports.syncWithHermes = exports.docStats = exports.getHumanPath = exports.getToonPath = exports.readDocForHuman = exports.readDocsForLLM = exports.readDoc = exports.writeMany = void 0;
+exports.getHumanPath = exports.getToonPath = exports.readDocForHuman = exports.readDocsForLLM = exports.readDoc = exports.writeMany = exports.deleteFile = exports.writeFile = exports.resolverStats = exports.clearResolveCache = exports.resolveMany = exports.resolve = exports.bpeDecode = exports.bpeEncode = exports.trainBPE = exports.stem = exports.createV3Engine = exports.compile = exports.expandWithDictionary = exports.parseDictionaryBlock = exports.decodeToonResponse = exports.ABBREV_MAP = exports.generateDictionaryString = exports.encodePrompt = exports.encodeMemory = exports.encodeDocument = exports.toonifyHermes = exports.compressHermesSkill = exports.computeHermesSessionDelta = exports.compressHermesMemory = exports.autoToonMiddleware = exports.toonifyAll = exports.injectToon = exports.scanProject = exports.runHealthChecks = exports.metrics = exports.injectDashboard = exports.ToonGineDashboard = exports.createMCPClient = exports.invalidateConfig = exports.getConfig = exports.jaccardEstimate = exports.minhashSignature = exports.blastRadius = exports.ContextPriorityQueue = exports.TfidfIndex = exports.BloomFilter = exports.toon = exports.classifyTask = exports.buildCieContext = void 0;
+exports.pushToHermes = exports.syncWithHermes = exports.docStats = void 0;
 exports.createEngine = createEngine;
 // ─── Main engine ──────────────────────────────────────────────────────────────
 var cie_1 = require("./cie");
@@ -26,13 +26,6 @@ Object.defineProperty(exports, "classifyTask", { enumerable: true, get: function
 // ─── TOON compression ─────────────────────────────────────────────────────────
 var toon_1 = require("./toon/toon");
 Object.defineProperty(exports, "toon", { enumerable: true, get: function () { return toon_1.toon; } });
-var compressor_1 = require("./toon/compressor");
-Object.defineProperty(exports, "compress", { enumerable: true, get: function () { return compressor_1.compress; } });
-Object.defineProperty(exports, "buildDictionary", { enumerable: true, get: function () { return compressor_1.buildDictionary; } });
-Object.defineProperty(exports, "dictToLine", { enumerable: true, get: function () { return compressor_1.dictToLine; } });
-var delta_1 = require("./toon/delta");
-Object.defineProperty(exports, "getOrCreateState", { enumerable: true, get: function () { return delta_1.getOrCreateState; } });
-Object.defineProperty(exports, "computeDelta", { enumerable: true, get: function () { return delta_1.computeDelta; } });
 // ─── Algorithms ───────────────────────────────────────────────────────────────
 var algorithms_1 = require("./cie/algorithms");
 Object.defineProperty(exports, "BloomFilter", { enumerable: true, get: function () { return algorithms_1.BloomFilter; } });
@@ -81,9 +74,6 @@ var decoder_1 = require("./toon/auto/decoder");
 Object.defineProperty(exports, "decodeToonResponse", { enumerable: true, get: function () { return decoder_1.decodeToonResponse; } });
 Object.defineProperty(exports, "parseDictionaryBlock", { enumerable: true, get: function () { return decoder_1.parseDictionaryBlock; } });
 Object.defineProperty(exports, "expandWithDictionary", { enumerable: true, get: function () { return decoder_1.expandWithDictionary; } });
-// ─── TOON v2 — Structure Stripper (⚠️ DEPRECATED — use v3 engine) ────────────
-var stripper_1 = require("./toon/v2/stripper");
-Object.defineProperty(exports, "strip", { enumerable: true, get: function () { return stripper_1.strip; } });
 // ─── TOON v3 — Query-Aware Progressive Engine ────────────────────────────────
 var compile_1 = require("./toon/v3/compile");
 Object.defineProperty(exports, "compile", { enumerable: true, get: function () { return compile_1.compile; } });
@@ -119,7 +109,6 @@ Object.defineProperty(exports, "pushToHermes", { enumerable: true, get: function
 const config_2 = require("./adapters/config");
 const cie_2 = require("./cie");
 const toon_2 = require("./toon/toon");
-const compressor_2 = require("./toon/compressor");
 const personalities_1 = require("./agents/personalities");
 const package_json_1 = require("../package.json");
 function createEngine(options = {}) {
@@ -131,7 +120,6 @@ function createEngine(options = {}) {
         },
         toon: {
             dense: toon_2.toon.dense,
-            compress: compressor_2.compress,
         },
         agents: {
             getPersonality: (agentId) => (0, personalities_1.getPersonalityExtension)(agentId),

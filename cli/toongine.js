@@ -344,9 +344,8 @@ ToonGine CLI v1.5.4
   toongine sync --once   One-time sync: originals → .toon/
   toongine sync --watch  Auto-sync every 30s
   toongine hermes        Hermes bridge: connect / disconnect / status
-  toongine compile       Phase 1: text compression (28%) + Phase 2: V3 runtime (94%)
-  toongine compile --force   Force recompile all (bypass hash cache)
-  toongine compile --file <path>  Compile single file + rebuild engine
+  toongine compile       Build v4 knowledge graph + context engine
+  toongine compile --force   Force rebuild graph (bypass cache)
   toongine watch         Auto-compile on file changes (dev mode)
   toongine clean         Remove stale duplicates + reindex engine.bin
   toongine stats         Show dual-doc stats + runtime savings
@@ -936,165 +935,67 @@ function compile() {
   const flag = process.argv[3]
   const force = flag === '--force'
   
-  if (flag === '--file') {
-    const file = process.argv[4]
-    if (!file) { console.log('  Usage: npx toongine compile --file <path>'); return }
-    try {
-      const { compileFile } = require('../dist/toon/compiler')
-      const result = compileFile(file, cwd)
-      if (result.error) {
-        console.log(`  ❌ ${file}: ${result.error}`)
-      } else {
-        console.log(`  ✅ ${file} → ${result.destPath}`)
-        console.log(`     ${(result.sourceSize/1024).toFixed(1)}KB → ${(result.compressedSize/1024).toFixed(1)}KB (${result.savingsPercent}%)`)
-        // Trigger engine rebuild for single file change
-        rebuildEngine(cwd)
-      }
-    } catch(e) { console.log(`  ❌ ${e.message}`) }
-    return
-  }
+  console.log(`\n  🔨 TOON v4 Graph Compiler${force ? ' (FORCE — full rebuild)' : ' (incremental)'}...\n`)
   
-  console.log(`\n  🔨 TOON Compiler — Phase 1: Text compression${force ? ' (FORCE — recompiling all)' : ' (incremental — only changed files)'}...\n`)
   try {
-    const { compileAllIncremental } = require('../dist/toon/compiler')
-    let dict = undefined
-    try { 
-      const db = require('../dist/toon/dictionary-builder')
-      dict = db.buildDictionary(cwd)
-    } catch {}
+    // ── Step 1: Build v4 unified graph ────────────────────────────────────
+    const { activate } = require('../dist/toon/v4/auto-activate')
+    const report = activate(cwd)
     
-    const result = compileAllIncremental(cwd, dict, force)
-    console.log(`  📁 ${result.totalFiles} files found`)
-    if (result.skipped > 0) console.log(`  ⏭️  ${result.skipped} skipped (unchanged — cached)`)
-    console.log(`  ✅ ${result.compiled} compiled to .toon`)
-    if (result.errors > 0) console.log(`  ❌ ${result.errors} errors`)
-    console.log(`  📊 ${(result.totalSourceSize/1024).toFixed(1)} KB → ${(result.totalCompressedSize/1024).toFixed(1)} KB`)
-    console.log(`  📄 File-level savings: ${result.overallSavingsPercent}% (text abbreviation + markdown stripping)`)
-    console.log(`  ⏱️  ${result.durationMs}ms${result.cached ? ' (cached incremental)' : ''}`)
-    
-    const poor = result.results.filter(r => !r.error && r.savingsPercent < 30).slice(0, 5)
-    if (poor.length > 0) {
-      console.log(`\n  ⚠️  Low-compression files (<30%):`)
-      poor.forEach(r => console.log(`     ${r.savingsPercent}% ${r.sourcePath.slice(0, 70)}`))
+    console.log(`  🧬 Graph: ${report.graphNodes} nodes / ${report.graphEdges} edges`)
+    console.log(`  🔧 Tools: ${report.tools.filter(t => t.installed).length}/${report.tools.length} installed`)
+    if (report.errors.length > 0) {
+      report.errors.forEach(e => console.log(`  ⚠️  ${e}`))
     }
+    console.log(`  ⏱️  ${report.durationMs}ms`)
     
-    // ── Rebuild V3 engine if anything changed ──
-    if (result.compiled > 0 || force) {
-      rebuildEngine(cwd)
+    // ── Step 2: Verify compression ────────────────────────────────────────
+    const { V4Engine } = require('../dist/toon/v4/engine')
+    const engine = new V4Engine({ projectRoot: cwd })
+    if (engine.initGraph()) {
+      const ctx = engine.buildContext({ agentId: 'marcus-ceo', agentDept: 'CEO', agentLevel: 1, query: 'project architecture and performance' })
+      console.log(`\n  📤 Context: ${ctx.totalTokens} tok (graph: ${ctx.graphTokens}, agent: ${ctx.agentTokens})`)
+      console.log(`  🔧 Tools: ${ctx.toolsAvailable.join(', ') || 'none'}`)
+      if (ctx.graphStale) console.log('  ⚠️  Graph is stale — run compile again')
     } else {
-      console.log('\n  ℹ️  No files changed — engine.bin is current')
+      console.log('\n  ⚠️  No unified.db built yet — run npx toongine compile --force')
     }
-    
     console.log('')
   } catch(e) { console.log(`  ❌ ${e.message}\n`) }
 }
 
-// Rebuild V3 engine.bin after .toon files change
-function rebuildEngine(cwd) {
-  console.log('\n  🔥 Rebuilding V3 runtime engine...\n')
-  try {
-    const engineBin = path.join(cwd, '.toon', 'v3', 'engine.bin')
-    
-    let v3available = false
-    try {
-      require.resolve('../dist/toon/v3/engine')
-      v3available = true
-    } catch {}
-    
-    if (v3available && fs.existsSync(engineBin)) {
-      const { createEngine } = require('../dist/toon/v3/engine')
-      const engine = createEngine(engineBin)
-      const data = engine.load()
-      const corpusKB = (data.corpusSize / 1024).toFixed(1)
-      
-      const sampleCtx = engine.process({
-        systemPrompt: 'You are an AI agent',
-        userMessage: 'analyze the project architecture and performance metrics',
-        agentId: 'marcus'
-      })
-      
-      const runtimeSavings = Math.round((1 - sampleCtx.stats.totalContextLen / Math.max(1, data.corpusSize / 3)) * 100)
-      const injectedKB = (sampleCtx.stats.totalContextLen / 1024).toFixed(1)
-      
-      console.log(`  🧠 Corpus: ${corpusKB} KB (${data.chunkCount} chunks indexed)`)
-      console.log(`  📤 Injected per query: ${injectedKB} KB`)
-      console.log(`  🔥 RUNTIME SAVINGS: ${runtimeSavings}%`)
-      
-      const HARD_BOUNDARY = 94
-      if (runtimeSavings >= HARD_BOUNDARY) {
-        console.log(`  ✅ ${HARD_BOUNDARY}% boundary: MET`)
-      } else {
-        console.log(`  ❌ ${HARD_BOUNDARY}% boundary: FAILED (needs ${HARD_BOUNDARY - runtimeSavings}% more)`)
-      }
-    } else {
-      console.log('  ⚠️  No engine.bin — runtime savings unavailable')
-    }
-  } catch (e) {
-    console.log(`  ⚠️  Engine check skipped: ${e.message}`)
-  }
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// v4 Watcher — file system monitoring with v4 auto-compile
 
 function watch() {
   const cwd = process.cwd()
-  console.log('\n  👁️  TOON Watcher — Auto-compiling on changes...\n')
-  console.log('  Watching: .toon/agents/**, .toon/graphify/**, .toon/codegraph/**, docs/**, CLAUDE.md')
+  console.log('\n  👁️  TOON v4 Watcher — Auto-rebuild on changes...\n')
+  console.log('  Watching: .toon/agents/**, .toon/docs/**, docs/**, CLAUDE.md')
   console.log('  Press Ctrl+C to stop\n')
   
   try {
-    const { watch } = require('fs')
-    const { compileFile } = require('../dist/toon/compiler')
-    const { buildDictionary } = require('../dist/toon/dictionary-builder')
-    
-    const dirs = [
-      path.join(cwd, '.toon', 'agents'),
-      path.join(cwd, '.toon', 'graphify'),
-      path.join(cwd, '.toon', 'codegraph'),
-      path.join(cwd, 'docs'),
-    ]
-    
-    let dict = undefined
-    function refreshDict() {
-      try { dict = buildDictionary(cwd) } catch {}
-    }
-    refreshDict()
-    
-    function handleChange(filePath) {
-      const rel = path.relative(cwd, filePath)
-      if (!rel.endsWith('.md')) return
-      clearTimeout(handleChange._timer)
-      handleChange._timer = setTimeout(() => {
-        try {
-          const result = compileFile(rel, cwd, dict)
-          if (result.error) {
-            console.log(`  ❌ ${rel}: ${result.error}`)
-          } else {
-            console.log(`  ✅ ${rel} → ${result.savingsPercent}% savings (${result.durationMs}ms)`)
-          }
-        } catch(e) { console.log(`  ❌ ${rel}: ${e.message}`) }
-      }, 500)
-    }
-    
-    for (const dir of dirs) {
-      if (fs.existsSync(dir)) {
-        watch(dir, { recursive: true }, (eventType, filename) => {
-          if (filename && filename.endsWith('.md')) {
-            handleChange(path.join(dir, filename))
-            refreshDict()
-          }
-        })
-      }
-    }
-    
-    const claudePath = path.join(cwd, 'CLAUDE.md')
-    if (fs.existsSync(claudePath)) {
-      watch(claudePath, (eventType) => {
-        handleChange(claudePath)
-        refreshDict()
-      })
-    }
-    
+    const { startWatcher } = require('../dist/toon/v4/watcher')
+    const statuses = startWatcher(cwd)
+    statuses.forEach(s => console.log(`  👁️  ${s.dir} → ${s.status}`))
     setInterval(() => {}, 60000)
-  } catch(e) { console.log(`  ❌ ${e.message}\n`) }
+  } catch(e) { 
+    // Fallback: basic fs.watch if v4 watcher not available
+    console.log(`  ℹ️  v4 watcher unavailable — using basic watcher (${e.message})\n`)
+    try {
+      const { watch } = require('fs')
+      const dirs = [path.join(cwd, '.toon', 'agents'), path.join(cwd, 'docs')]
+      for (const dir of dirs) {
+        if (fs.existsSync(dir)) {
+          watch(dir, { recursive: true }, (eventType, filename) => {
+            if (filename && filename.endsWith('.md')) {
+              console.log(`  📝 ${filename} changed — run npx toongine compile to rebuild graph`)
+            }
+          })
+        }
+      }
+      setInterval(() => {}, 60000)
+    } catch(e2) { console.log(`  ❌ ${e2.message}\n`) }
+  }
 }
 
 // ── Hermes Integration ──────────────────────────────────────────────────────

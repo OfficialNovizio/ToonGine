@@ -1,31 +1,11 @@
 "use strict";
-// src/toon/index.ts — TOON public API re-exports
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ingestCodegraph = exports.ingestGraphify = exports.ingestCodeReviewGraph = exports.ingestAll = exports.stableHash = exports.nodeId = exports.SQL = exports.UNIFIED_SCHEMA = exports.createUnifiedGraph = exports.UnifiedGraph = exports.expand = exports.storeForExpand = exports.injectDelta = exports.stratify = exports.formatTopN = exports.formatStatHeader = exports.summarize = exports.docStats = exports.getHumanPath = exports.getToonPath = exports.readDocForHuman = exports.readDocsForLLM = exports.readDoc = exports.writeMany = exports.deleteFile = exports.writeFile = exports.resolverStats = exports.clearResolveCache = exports.resolveMany = exports.resolve = exports.bpeDecode = exports.bpeEncode = exports.trainBPE = exports.stem = exports.createEngine = exports.compile = exports.strip = exports.resetAllDeltas = exports.resetDelta = exports.formatDeltaForLLM = exports.computeDelta = exports.getOrCreateState = exports.buildSystemBlock = exports.matchTemplate = exports.compressDecision = exports.dictToLine = exports.buildDictionary = exports.compress = exports.SCHEMAS = exports.toon = void 0;
-exports.GRAPH_MCP_TOOLS = exports.createGraphGateway = exports.HermesGraphGateway = exports.getWatcherStatus = exports.stopAllWatchers = exports.startWatcher = exports.ensureAllTools = exports.installCodegraph = exports.detectTools = exports.deactivate = exports.activate = exports.formatContextForLLM = exports.buildAgentContext = exports.createV4Engine = exports.V4Engine = void 0;
-// ─── Core TOON ───────────────────────────────────────────────────────────────
+exports.getWatcherStatus = exports.stopAllWatchers = exports.startWatcher = exports.ensureAllTools = exports.installCodegraph = exports.detectTools = exports.deactivate = exports.activate = exports.formatContextForLLM = exports.buildAgentContext = exports.createV4Engine = exports.V4Engine = exports.ingestCodegraph = exports.ingestGraphify = exports.ingestCodeReviewGraph = exports.ingestAll = exports.stableHash = exports.nodeId = exports.SQL = exports.UNIFIED_SCHEMA = exports.createUnifiedGraph = exports.UnifiedGraph = exports.expand = exports.storeForExpand = exports.injectDelta = exports.stratify = exports.formatTopN = exports.formatStatHeader = exports.summarize = exports.docStats = exports.getHumanPath = exports.getToonPath = exports.readDocForHuman = exports.readDocsForLLM = exports.readDoc = exports.writeMany = exports.deleteFile = exports.writeFile = exports.resolverStats = exports.clearResolveCache = exports.resolveMany = exports.resolve = exports.bpeDecode = exports.bpeEncode = exports.trainBPE = exports.stem = exports.createEngine = exports.compile = exports.SCHEMAS = exports.toon = void 0;
+exports.GRAPH_MCP_TOOLS = exports.createGraphGateway = exports.HermesGraphGateway = void 0;
+// src/toon/index.ts — TOON public API re-exports (v3 active, v4 newest)
 var toon_1 = require("./toon");
 Object.defineProperty(exports, "toon", { enumerable: true, get: function () { return toon_1.toon; } });
 Object.defineProperty(exports, "SCHEMAS", { enumerable: true, get: function () { return toon_1.SCHEMAS; } });
-// ─── v1 Compressor ───────────────────────────────────────────────────────────
-var compressor_1 = require("./compressor");
-Object.defineProperty(exports, "compress", { enumerable: true, get: function () { return compressor_1.compress; } });
-Object.defineProperty(exports, "buildDictionary", { enumerable: true, get: function () { return compressor_1.buildDictionary; } });
-Object.defineProperty(exports, "dictToLine", { enumerable: true, get: function () { return compressor_1.dictToLine; } });
-Object.defineProperty(exports, "compressDecision", { enumerable: true, get: function () { return compressor_1.compressDecision; } });
-Object.defineProperty(exports, "matchTemplate", { enumerable: true, get: function () { return compressor_1.matchTemplate; } });
-Object.defineProperty(exports, "buildSystemBlock", { enumerable: true, get: function () { return compressor_1.buildSystemBlock; } });
-// ─── v1 Delta ────────────────────────────────────────────────────────────────
-var delta_1 = require("./delta");
-Object.defineProperty(exports, "getOrCreateState", { enumerable: true, get: function () { return delta_1.getOrCreateState; } });
-Object.defineProperty(exports, "computeDelta", { enumerable: true, get: function () { return delta_1.computeDelta; } });
-Object.defineProperty(exports, "formatDeltaForLLM", { enumerable: true, get: function () { return delta_1.formatDeltaForLLM; } });
-Object.defineProperty(exports, "resetDelta", { enumerable: true, get: function () { return delta_1.resetDelta; } });
-Object.defineProperty(exports, "resetAllDeltas", { enumerable: true, get: function () { return delta_1.resetAllDeltas; } });
-// ─── v2 Structure Stripper ───────────────────────────────────────────────────
-var stripper_1 = require("./v2/stripper");
-Object.defineProperty(exports, "strip", { enumerable: true, get: function () { return stripper_1.strip; } });
-// ─── v3 Query-Aware Progressive Engine ───────────────────────────────────────
 var compile_1 = require("./v3/compile");
 Object.defineProperty(exports, "compile", { enumerable: true, get: function () { return compile_1.compile; } });
 var engine_1 = require("./v3/engine");
@@ -36,7 +16,6 @@ var bpe_1 = require("./v3/bpe");
 Object.defineProperty(exports, "trainBPE", { enumerable: true, get: function () { return bpe_1.trainBPE; } });
 Object.defineProperty(exports, "bpeEncode", { enumerable: true, get: function () { return bpe_1.encode; } });
 Object.defineProperty(exports, "bpeDecode", { enumerable: true, get: function () { return bpe_1.decode; } });
-// ─── v3 Resolver + Sync ─────────────────────────────────────────────────────
 var resolver_1 = require("./v3/resolver");
 Object.defineProperty(exports, "resolve", { enumerable: true, get: function () { return resolver_1.resolve; } });
 Object.defineProperty(exports, "resolveMany", { enumerable: true, get: function () { return resolver_1.resolveMany; } });
@@ -53,7 +32,6 @@ Object.defineProperty(exports, "readDocForHuman", { enumerable: true, get: funct
 Object.defineProperty(exports, "getToonPath", { enumerable: true, get: function () { return dual_docs_1.getToonPath; } });
 Object.defineProperty(exports, "getHumanPath", { enumerable: true, get: function () { return dual_docs_1.getHumanPath; } });
 Object.defineProperty(exports, "docStats", { enumerable: true, get: function () { return dual_docs_1.docStats; } });
-// ─── v4 Stratified Context Engine ─────────────────────────────────────────
 var stratify_1 = require("./v4/stratify");
 Object.defineProperty(exports, "summarize", { enumerable: true, get: function () { return stratify_1.summarize; } });
 Object.defineProperty(exports, "formatStatHeader", { enumerable: true, get: function () { return stratify_1.formatStatHeader; } });
@@ -62,7 +40,6 @@ Object.defineProperty(exports, "stratify", { enumerable: true, get: function () 
 Object.defineProperty(exports, "injectDelta", { enumerable: true, get: function () { return stratify_1.injectDelta; } });
 Object.defineProperty(exports, "storeForExpand", { enumerable: true, get: function () { return stratify_1.storeForExpand; } });
 Object.defineProperty(exports, "expand", { enumerable: true, get: function () { return stratify_1.expand; } });
-// ─── v4 Graph Intelligence Bridge ─────────────────────────────────────────
 var unified_graph_1 = require("./v4/unified-graph");
 Object.defineProperty(exports, "UnifiedGraph", { enumerable: true, get: function () { return unified_graph_1.UnifiedGraph; } });
 Object.defineProperty(exports, "createUnifiedGraph", { enumerable: true, get: function () { return unified_graph_1.createUnifiedGraph; } });

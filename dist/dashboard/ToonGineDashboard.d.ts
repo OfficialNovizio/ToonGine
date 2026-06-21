@@ -1,11 +1,12 @@
 import React from 'react';
-import type { TokenBurnData, ProjectHealthData } from './types';
+import type { TokenBurnData, ProjectHealthData, AgentMemoryData } from './types';
+type Tab = 'memory' | 'burn' | 'health';
 interface Props {
-    tab: 'burn' | 'health';
+    tab: Tab;
     tokenBurnData: TokenBurnData | null;
     projectHealthData: ProjectHealthData | null;
+    agentMemoryData: AgentMemoryData | null;
 }
-/** Renders a single tab's content. Parent controls tab selection. */
-export declare function ToonGineDashboard({ tab, tokenBurnData, projectHealthData }: Props): React.JSX.Element;
+export declare function ToonGineDashboard({ tab, tokenBurnData, projectHealthData, agentMemoryData }: Props): React.JSX.Element;
 export {};
 //# sourceMappingURL=ToonGineDashboard.d.ts.map

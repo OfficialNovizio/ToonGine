@@ -61,7 +61,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && node -e \"require('fs').cpSync('src/dashboard/ui/dist','dist/dashboard/ui/dist',{recursive:true})\"",
+    "build": "npm run build:ts && npm run build:ui",
+    "build:ts": "tsc",
+    "build:ui": "cd src/dashboard/ui && npm install --silent && npx vite build && cd ../../.. && node -e \"require('fs').cpSync('src/dashboard/ui/dist','dist/dashboard/ui/dist',{recursive:true})\"",
     "dev": "tsc --watch",
     "test": "echo 'Tests pass — CI pending'",
     "prepublishOnly": "npm run build",

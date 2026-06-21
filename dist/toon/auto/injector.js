@@ -11,7 +11,10 @@ exports.injectToon = injectToon;
 const fs_1 = require("fs");
 const path_1 = require("path");
 const encoder_1 = require("./encoder");
-const stripper_1 = require("../v2/stripper");
+function strip(text) {
+    const stripped = text.replace(/^#{1,6}\s+/gm, '').replace(/```[\s\S]*?```/g, '').replace(/`[^`]+`/g, '').replace(/^---[\s\S]*?---/gm, '').replace(/^\|.+\|$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
+    return { output: stripped, savingsPercent: text.length > 0 ? Math.round((1 - stripped.length / text.length) * 100) : 0 };
+}
 const compile_1 = require("../v3/compile");
 // ─── Main Injector ────────────────────────────────────────────────────────────
 function injectToon(scan) {
@@ -263,7 +266,7 @@ function compressDocuments(scan, result) {
 function compressDocumentToToon(content, path, _dict) {
     // Strip markdown → semantic skeleton (30-60% savings)
     // For documents, the stripped text IS the TOON format — LLM-readable, no syntax overhead
-    const stripped = (0, stripper_1.strip)(content);
+    const stripped = strip(content);
     // Encode only if further compression is beneficial
     const result = (0, encoder_1.encodeDocument)(stripped.output, path);
     // Use stripped output directly if TOON encoding adds overhead

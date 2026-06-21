@@ -90,4 +90,46 @@ export interface ProjectHealthData {
         total: number;
     }[];
 }
+export interface AgentMemoryData {
+    memories: {
+        agent: string;
+        dept: string;
+        size: number;
+        health: number;
+    }[];
+    memoryTotalSize: number;
+    memoryAgentCount: number;
+    graph: {
+        nodes: number;
+        edges: number;
+        density: number;
+        kinds: {
+            kind: string;
+            count: number;
+        }[];
+        tools: {
+            tool: string;
+            count: number;
+        }[];
+        highConfidence: number;
+    } | null;
+    plugins: {
+        name: string;
+        status: 'ok' | 'warn' | 'error';
+        detail: string;
+    }[];
+    hermes: {
+        sessions: number;
+        tokensIn: number;
+        tokensOut: number;
+    };
+    skillsTotal: number;
+    agentEfficiency: {
+        agent: string;
+        calls: number;
+        successRate: number;
+        avgTokens: number;
+        avgCost: number;
+    }[];
+}
 //# sourceMappingURL=types.d.ts.map

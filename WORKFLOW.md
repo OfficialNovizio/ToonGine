@@ -1,104 +1,190 @@
-# ToonGine — How Everything Works
+# ToonGine v4 — How Everything Works
 
 ## One-sentence summary
-ToonGine is a one-install npm package that auto-compresses your project's LLM context, tracks token burn, and gives you a 3-tab dashboard — all zero-config.
+ToonGine is a one-install npm package that builds a knowledge graph of your project, delivers stratified context to agents (≥97% token savings), tracks token burn, and gives you a 3-tab dashboard — all zero-config.
 
 ---
 
-## Architecture (2 parts)
+## Architecture Diagram
 
 ```
-PART 1: YOUR PROJECT (code)
-────────────────────────────────
-  npm install toongine
-  ↓ (postinstall auto-runs)
-  • Creates .toon/config.json (project identity)
-  • Smart gitignore: caches ignored, config+agents tracked
-  • Creates .toon/agents/ directory for agent memory
-  • npm run dev → dashboard injected into Next.js sidebar
+┌─────────────────────────────────────────────────────────────────┐
+│                      YOUR PROJECT (code)                         │
+│                                                                  │
+│  npm install toongine                                            │
+│  ├── postinstall → .toon/config.json (repo identity)            │
+│  ├── postinstall → smart .gitignore (cache ignored, config ✓)  │
+│  ├── npx toongine compile                                        │
+│  │   └── v4 activate() ─────────────────────────────────────┐   │
+│  │       ├── scan project (docs, agents, .md, .ts, .tsx)    │   │
+│  │       ├── ingestAll() → unified.db                        │   │
+│  │       │   ├── code-review-graph (Tree-sitter AST)         │   │
+│  │       │   ├── graphify (import dependency graph)          │   │
+│  │       │   └── codegraph (symbol call graph)               │   │
+│  │       ├── install MCP server → .toon/hermes/mcp-server.py │   │
+│  │       └── start watcher (auto-rebuild on file change)     │   │
+│  │                                                            │   │
+│  └── npm run dev → dashboard injected into sidebar              │   │
+│                                                                  │   │
+└─────────────────────────────────────────────────────────────────┘   │
+                                                                      │
+┌─────────────────────────────────────────────────────────────────────┘
+│  unified.db (SQLite)
+│  ┌──────────────┬──────────────┬──────────────┐
+│  │ unified_nodes │ unified_edges │ communities  │
+│  │  4,708 rows   │ 12,004 rows   │  13 clusters │
+│  └──────────────┴──────────────┴──────────────┘
+│
+│  MCP Bridge (5 graph tools for Hermes agents)
+│  ├── toon_graph_explore(q)     natural language → symbols + code
+│  ├── toon_graph_callers(sym)   who calls this function?
+│  ├── toon_graph_impact(sym)    blast radius analysis (3-level chain)
+│  ├── toon_graph_search(q)      full-text across all nodes
+│  └── toon_graph_status()       graph health (N nodes, E edges, stale?)
+│
+│  Context Builder (per-agent stratified delivery)
+│  ┌─────────────────────────────────────────────────┐
+│  │ Layer 1: STAT HEADER  (~30 tok)                 │
+│  │   • Agent memory summary                        │
+│  │   • Project stats (files, LOC, commits)         │
+│  │   • Graph overview (nodes, communities)         │
+│  ├─────────────────────────────────────────────────┤
+│  │ Layer 2: TOP-N       (~50 tok)                  │
+│  │   • Most relevant symbols for the query         │
+│  │   • Agent's department context                  │
+│  │   • Active issues / decisions                   │
+│  ├─────────────────────────────────────────────────┤
+│  │ Layer 3: DELTA REFS  (~10 tok)                  │
+│  │   • What changed since last session             │
+│  │   • File-level diffs (TOON-compressed)          │
+│  │   • New symbols added since last compile        │
+│  └─────────────────────────────────────────────────┘
+│
+│  Compression: 100K token codebase → ~90 tok context
+│  Verified savings: ≥97% (compression-verifier.ts)
+│
+└─────────────────────────────────────────────────────────────────
 
-
-PART 2: VPS (metrics pipeline)
-────────────────────────────────
-  Hermes Agent runs your agents (DeepSeek/claude-opus)
-  ↓
-  state.db records every session (tokens, cost, cwd)
-  ↓
-  cron job every 5 min ($0 cost):
-    scripts/toongine-pipeline.py
-    → reads state.db
-    → detects project via cwd → .toon/config.json → repo_id
-    → POSTs to Supabase (activity_log, snapshots, provider_ledger)
-  ↓
-  Supabase (mcejxdjrwzjxafciuely.supabase.co)
-    → all tables scoped by repo_id
-    → RLS policies isolate venture data
+┌─────────────────────────────────────────────────────────────────┐
+│                      VPS (pipeline)                               │
+│                                                                  │
+│  Hermes Agent runs your agents (DeepSeek/Opus/Anthropic)        │
+│  │                                                               │
+│  ├── state.db (every session: tokens, cost, cwd, agent)         │
+│  │                                                               │
+│  └── MCP bridge ──► unified.db (5 graph tools available)        │
+│                                                                  │
+│  cron every 5 min ($0 cost):                                     │
+│    scripts/toongine-pipeline.py                                  │
+│    ├── read state.db                                             │
+│    ├── detect project via cwd → .toon/config.json → repo_id     │
+│    └── POST to Supabase (activity_log, snapshots, provider)     │
+│                                                                  │
+│  Supabase (mcejxdjrwzjxafciuely.supabase.co)                     │
+│    └── all tables scoped by repo_id (RLS isolation)              │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3-Tab Dashboard (what you see)
+## 3-Tab Dashboard
 
 | Tab | Shows | Data source |
 |-----|-------|-------------|
-| 🕵️ **Agent Memory** | Agent roster, knowledge graph, plugin health, session stats | `/api/agents/infra` (reads .toon/agents/, unified.db, state.db) |
-| 🔥 **Token Burn** | Token usage 30d, cost trend, per-agent burn, provider health | `/api/token-burn` (reads Supabase + local SQLite) |
-| 🧬 **Health** | TOON compression quality, savings trend, codebase structure, API health | `/api/project-health` (reads compile-cache, metrics buffer) |
+| 🕵️ **Agent Memory** | Agent roster, knowledge graph (nodes/edges/communities), plugin health, Hermes sessions | `/api/agents/infra` |
+| 🔥 **Token Burn** | Token usage 30d, cost trend, per-agent burn, provider health | `/api/token-burn` |
+| 🧬 **Health** | TOON compression quality, savings trend, codebase structure, API health, issues | `/api/project-health` |
 
 **Two ways to view:**
-1. `npx toongine dashboard` → launches Express on port 3000 (standalone Vite UI)
-2. Install in Next.js project → dashboard auto-injected at `/agents`
+1. `npx toongine dashboard` → Express on port 3000 (Vite UI, 160KB gzipped)
+2. Install in Next.js → auto-injected at `/agents` (inject.ts)
 
 ---
 
-## TOON Compression (the savings engine)
+## v4 TOON Engine (active version)
 
-**Active versions: v3 (stable) + v4 (newest)**
+The TOON v4 engine replaces v3's keyword-based chunk retrieval with graph intelligence:
 
-```
-Full codebase (100K tokens)
-  ↓ v4 Unified Graph ingest
-Code → nodes + edges (4,708 nodes)
-  ↓ v3 BPE tokenization
-Stemmed chunks (94% compression)
-  ↓ CIE classify → retrieve → rank
-Only relevant chunks injected
-  ↓
-LLM gets ~6K tokens instead of 100K
-```
+| Component | What it does |
+|-----------|-------------|
+| **auto-activate.ts** | `activate(projectRoot)` — one command: build graph, install tools, start watchers |
+| **unified-graph.ts** | SQLite-backed knowledge graph (nodes, edges, communities) |
+| **unified-schema.ts** | Schema + SQL definitions for unified.db |
+| **ingesters/** | 3 data sources → unified nodes/edges: code-review-graph, graphify, codegraph |
+| **context-builder.ts** | Per-agent stratified context (stat header → top-N → delta refs) |
+| **hermes-gateway.ts** | MCP bridge — exposes 5 graph tools to Hermes agents |
+| **stratify.ts** | Numeric/string stat compression + delta injection |
+| **tool-installer.ts** | Auto-install MCP server into .toon/hermes/ |
+| **watcher.ts** | File system monitor — auto-rebuild graph on changes |
+| **compression-verifier.ts** | Verifies ≥97% compression target |
+| **bridge-types.ts** | Shared types: UnifiedNode, UnifiedEdge, MCPToolDef |
+| **mcp-server.py** | Python MCP server (stdio) that Hermes connects to |
 
-**What each TOON version does:**
+**Why v4 over v3:**
 
-| Version | Purpose | Status |
-|---------|---------|--------|
-| v3 | BPE compression, query-aware chunking, dual-doc sync (.toon ↔ .md) | ✅ Active |
-| v4 | Graph intelligence (unified.db, MCP bridge, auto-activate, watcher) | ✅ Active |
-| v1, v2 | Prototype compressors | 🗑️ Removed |
+| | v3 | v4 |
+|---|----|----|
+| Retrieval | Keyword index (inverted) | Semantic graph search |
+| Context | Flat chunk injection | 3-layer stratified (stats → top-N → delta) |
+| Tools | None | 5 MCP graph tools for Hermes |
+| Auto-activate | Manual compile only | One-command init + watcher |
+| Compression | BPE tokenization (~94%) | Graph-based context minimization (~97%) |
 
 ---
 
-## Key files (source tree)
+## Key Files (source tree)
 
 ```
 src/
-├── dashboard/          ← 3-component glass dashboard
-│   ├── AgentMemory.tsx   agent roster + graph + plugins
-│   ├── TokenBurn.tsx     token usage + cost charts
-│   ├── ProjectHealth.tsx compression quality + issues
-│   ├── ToonGineDashboard.tsx  3-tab wrapper
-│   ├── types.ts         shared data types
-│   ├── api.ts           Express API routes (30+ endpoints)
-│   ├── server.ts        Express entry (port 3000)
-│   ├── inject.ts        auto-inject into Next.js
-│   └── ui/              minified Vite app (App.tsx only)
+├── dashboard/               ← 3-component glass dashboard
+│   ├── AgentMemory.tsx         (agent roster + graph + plugins)
+│   ├── TokenBurn.tsx           (token usage + cost charts)
+│   ├── ProjectHealth.tsx       (compression quality + issues)
+│   ├── ToonGineDashboard.tsx   (3-tab wrapper)
+│   ├── types.ts                (shared data types)
+│   ├── api.ts                  (Express API — 30+ routes)
+│   ├── server.ts               (Express entry, port 3000)
+│   ├── inject.ts               (auto-inject into Next.js)
+│   └── ui/                     (minified Vite app)
+│       └── src/App.tsx         (tab switch + data fetch)
 ├── toon/
-│   ├── v3/              BPE + chunking + sync engine
-│   └── v4/              Graph MCP + unified.db + watcher
-├── metrics/             collector, agent-tracker, health-checks
-├── agents/              registries, personalities, manifest
-├── cie/                 classify → retrieve → rank → inject
-├── plugins/supabase/    zero-config Supabase plugin
-└── adapters/            hermes-sync, mcp-client, config
+│   ├── v3/                     (BPE engine — kept for backward compat)
+│   └── v4/ ★ACTIVE             (graph intelligence engine)
+│       ├── auto-activate.ts
+│       ├── engine.ts
+│       ├── unified-graph.ts    (SQLite knowledge graph)
+│       ├── context-builder.ts  (stratified context delivery)
+│       ├── hermes-gateway.ts   (MCP bridge)
+│       ├── ingesters/          (graphify, codegraph, code-review-graph)
+│       ├── watcher.ts          (auto-rebuild on file change)
+│       └── mcp-server.py       (Python MCP server)
+├── metrics/     collector, agent-tracker, health-checks
+├── agents/      registries, personalities, manifest
+├── cie/         classify → retrieve → rank → inject
+├── plugins/     zero-config Supabase plugin
+└── adapters/    hermes-sync, mcp-client, config
+cli/
+├── toongine.js  (CLI — compile, init, dashboard, integrate, watch, stats)
+scripts/
+├── postinstall.js       (smart gitignore + config creation)
+├── preuninstall.js      (hardened cleanup of 8 injected files)
+├── toongine-pipeline.py (every 5 min: state.db → Supabase)
+```
+
+---
+
+## Commands
+
+```
+npx toongine init        Initialize project (.toon/ + config + agents/)
+npx toongine compile     Build v4 knowledge graph (activate → ingest → verify)
+npx toongine dashboard   Launch dashboard on port 3000 (Vite UI)
+npx toongine watch       Auto-rebuild graph on file changes
+npx toongine integrate   TIER-K setup: TOON + CIE + Graph + Inject
+npx toongine clean       Remove .toon/ caches (not config, not agents)
+npx toongine stats       Project stats + compression savings
+npx toongine hermes      Hermes bridge: connect / disconnect / status
 ```
 
 ---
@@ -111,32 +197,19 @@ scripts/toongine-pipeline.py:
   2. For each session with cwd:
      a. Climb up directories looking for .toon/config.json
      b. Read repo_id from config.json
-     c. Push activity_log row to Supabase (scoped by repo_id)
+     c. Push activity_log to Supabase (scoped by repo_id)
   3. Push snapshots (token counts, provider health)
   4. Push provider_ledger (per-model cost breakdown)
   5. Flag unattributed sessions (no .toon/config.json found)
-```
 
-**Attribution chain:** cwd → .toon/config.json → repo_id → Supabase row
-
----
-
-## Commands
-
-```
-npx toongine init        Initialize project (creates .toon/ + config)
-npx toongine dashboard   Launch dashboard on port 3000
-npx toongine compile     Rebuild TOON graph + engine.bin
-npx toongine watch       Auto-recompile on file changes
-npx toongine clean       Remove .toon/ caches (not config)
-npx toongine integrate   Full TIER-K setup (TOON + CIE + Graph)
-npx toongine stats       Quick project stats
+Attribution chain: cwd → .toon/config.json → repo_id → Supabase
 ```
 
 ---
 
-## 3 rules to remember
+## 3 Rules
 
-1. **Install once, works everywhere.** No .env needed — Supabase anon key hex-baked into compiled JS.
-2. **One Supabase, all ventures.** Every table has `repo_id` column — automatic data isolation.
-3. **Pipeline runs on VPS only.** $0 cost, reads Hermes state.db locally, pushes to Supabase.
+1. **Install once, works everywhere.** No .env needed — Supabase anon key hex-baked.
+2. **One Supabase, all ventures.** Every table has `repo_id` — automatic isolation.
+3. **Pipeline is $0.** Reads Hermes state.db locally, pushes to Supabase. No LLM.
+4. **Build matters, then it's automatic.** Run `npx toongine compile` once per project — after that, watcher handles changes and agent context auto-injects.

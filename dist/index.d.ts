@@ -1,8 +1,6 @@
 export { buildCieContext, classifyTask } from './cie';
 export type { CieContext, CieParams, TaskProfile, TaskType } from './cie';
 export { toon } from './toon/toon';
-export { compress, buildDictionary, dictToLine } from './toon/compressor';
-export { getOrCreateState, computeDelta } from './toon/delta';
 export { BloomFilter, TfidfIndex, ContextPriorityQueue, blastRadius, minhashSignature, jaccardEstimate } from './cie/algorithms';
 export { getConfig, invalidateConfig } from './adapters/config';
 export type { EngineConfig } from './adapters/config';
@@ -23,8 +21,6 @@ export type { ProjectScan, InjectionPoint } from './toon/auto/scanner';
 export type { InjectionResult } from './toon/auto/injector';
 export type { ToonEncodeResult } from './toon/auto/encoder';
 export type { DecodedResult } from './toon/auto/decoder';
-export { strip } from './toon/v2/stripper';
-export type { StripResult } from './toon/v2/stripper';
 export { compile } from './toon/v3/compile';
 export type { CompileOptions, CompileResult } from './toon/v3/compile';
 export { createEngine as createV3Engine } from './toon/v3/engine';
@@ -39,7 +35,6 @@ export type { WriteTarget, WriteResult } from './toon/v3/sync-writer';
 export { readDoc, readDocsForLLM, readDocForHuman, getToonPath, getHumanPath, docStats } from './toon/v3/dual-docs';
 export type { DualDocStats } from './toon/v3/dual-docs';
 export { syncWithHermes, pushToHermes } from './adapters/hermes-sync';
-import { compress } from './toon/compressor';
 export interface EngineOptions {
     projectRoot?: string;
     configPath?: string;
@@ -57,7 +52,6 @@ export declare function createEngine(options?: EngineOptions): {
     };
     toon: {
         dense: (items: Record<string, unknown>[], schemaOrType: import("./toon/toon").ToonSchema | string) => string;
-        compress: typeof compress;
     };
     agents: {
         getPersonality: (agentId: string) => string;
