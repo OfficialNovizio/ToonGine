@@ -10,7 +10,12 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join, dirname, relative } from 'path'
 import type { ProjectScan, InjectionPoint, ProjectDictionary, DiscoveredSchema } from './scanner'
 import { encodeDocument, encodeMemory, generateDictionaryString, ABBREV_MAP } from './encoder'
-import { strip } from '../v2/stripper'
+// inline text extractor — replaces deleted v2/stripper
+interface StripResult { output: string; savingsPercent: number }
+function strip(text: string): StripResult {
+  const stripped = text.replace(/^#{1,6}\s+/gm, '').replace(/```[\s\S]*?```/g, '').replace(/`[^`]+`/g, '').replace(/^---[\s\S]*?---/gm, '').replace(/^\|.+\|$/gm, '').replace(/\n{3,}/g, '\n\n').trim()
+  return { output: stripped, savingsPercent: text.length > 0 ? Math.round((1 - stripped.length / text.length) * 100) : 0 }
+}
 import { compile } from '../v3/compile'
 
 export interface InjectionResult {

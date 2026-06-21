@@ -23,8 +23,6 @@ export type { CieContext, CieParams, TaskProfile, TaskType } from './cie'
 // ─── TOON compression ─────────────────────────────────────────────────────────
 
 export { toon } from './toon/toon'
-export { compress, buildDictionary, dictToLine } from './toon/compressor'
-export { getOrCreateState, computeDelta } from './toon/delta'
 
 // ─── Algorithms ───────────────────────────────────────────────────────────────
 
@@ -65,11 +63,6 @@ export type { InjectionResult } from './toon/auto/injector'
 export type { ToonEncodeResult } from './toon/auto/encoder'
 export type { DecodedResult } from './toon/auto/decoder'
 
-// ─── TOON v2 — Structure Stripper (⚠️ DEPRECATED — use v3 engine) ────────────
-
-export { strip } from './toon/v2/stripper'
-export type { StripResult } from './toon/v2/stripper'
-
 // ─── TOON v3 — Query-Aware Progressive Engine ────────────────────────────────
 
 export { compile } from './toon/v3/compile'
@@ -95,7 +88,6 @@ export { syncWithHermes, pushToHermes } from './adapters/hermes-sync'
 import { getConfig } from './adapters/config'
 import { buildCieContext } from './cie'
 import { toon } from './toon/toon'
-import { compress } from './toon/compressor'
 import { getPersonalityExtension } from './agents/personalities'
 import { version as pkgVersion } from '../package.json'
 
@@ -117,7 +109,6 @@ export function createEngine(options: EngineOptions = {}) {
     },
     toon: {
       dense: toon.dense,
-      compress,
     },
     agents: {
       getPersonality: (agentId: string) =>

@@ -1,22 +1,6 @@
-// src/toon/index.ts — TOON public API re-exports
-
-// ─── Core TOON ───────────────────────────────────────────────────────────────
+// src/toon/index.ts — TOON public API re-exports (v3 active, v4 newest)
 export { toon, SCHEMAS } from './toon'
 export type { ToonSchema, ToonField } from './toon'
-
-// ─── v1 Compressor ───────────────────────────────────────────────────────────
-export { compress, buildDictionary, dictToLine, compressDecision, matchTemplate, buildSystemBlock } from './compressor'
-export type { Dictionary, Template, CompressedBlock, DecisionRecord } from './compressor'
-
-// ─── v1 Delta ────────────────────────────────────────────────────────────────
-export { getOrCreateState, computeDelta, formatDeltaForLLM, resetDelta, resetAllDeltas } from './delta'
-export type { DeltaState, DeltaChange, DeltaResult } from './delta'
-
-// ─── v2 Structure Stripper ───────────────────────────────────────────────────
-export { strip } from './v2/stripper'
-export type { StripResult } from './v2/stripper'
-
-// ─── v3 Query-Aware Progressive Engine ───────────────────────────────────────
 export { compile } from './v3/compile'
 export type { CompileOptions, CompileResult } from './v3/compile'
 export { createEngine } from './v3/engine'
@@ -24,20 +8,14 @@ export type { EngineData, EngineContext, MatchResult, SessionDelta, V3Engine, Ch
 export { stem } from './v3/stemmer'
 export { trainBPE, encode as bpeEncode, decode as bpeDecode } from './v3/bpe'
 export type { BPETable } from './v3/bpe'
-
-// ─── v3 Resolver + Sync ─────────────────────────────────────────────────────
 export { resolve, resolveMany, clearResolveCache, resolverStats } from './v3/resolver'
 export type { ResolveResult, ReadMode } from './v3/resolver'
 export { writeFile, deleteFile, writeMany } from './v3/sync-writer'
 export type { WriteTarget, WriteResult } from './v3/sync-writer'
 export { readDoc, readDocsForLLM, readDocForHuman, getToonPath, getHumanPath, docStats } from './v3/dual-docs'
 export type { DualDocStats } from './v3/dual-docs'
-
-// ─── v4 Stratified Context Engine ─────────────────────────────────────────
 export { summarize, formatStatHeader, formatTopN, stratify, injectDelta, storeForExpand, expand } from './v4/stratify'
 export type { NumericStats, StringStats, StatProfile, StratifiedPayload } from './v4/stratify'
-
-// ─── v4 Graph Intelligence Bridge ─────────────────────────────────────────
 export { UnifiedGraph, createUnifiedGraph } from './v4/unified-graph'
 export { UNIFIED_SCHEMA, SQL } from './v4/unified-schema'
 export { nodeId, stableHash } from './v4/bridge-types'
