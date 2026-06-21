@@ -92,6 +92,8 @@
     "dist/",
     "toongine.js",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    ".code-review-graph/graph.html",
+    ".code-review-graph/wiki/"
   ]
 }
