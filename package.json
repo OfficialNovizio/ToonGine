@@ -87,5 +87,11 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "files": [
+    "dist/",
+    "toongine.js",
+    "README.md",
+    "LICENSE"
+  ]
 }
