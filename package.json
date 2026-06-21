@@ -50,13 +50,11 @@
     }
   },
   "bin": {
-    "toongine": "./cli/toongine.js"
+    "toongine": "./toongine.js"
   },
   "files": [
     "dist/",
-    "cli/",
-    "templates/",
-    "scripts/",
+    "toongine.js",
     "README.md",
     "LICENSE"
   ],
