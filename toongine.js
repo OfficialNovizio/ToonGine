@@ -521,7 +521,7 @@ function init() {
     toonBidirectional: true,
     hermesSync: features.hermes,
     claudeAvailable: features.claude,
-    agents: agentsCreated || 13,
+    agents: agentsCreated || 24,
     builtIn: ['graphify', 'codegraph', 'code-review-graph'],
     codeReviewGraph: features.codeReviewGraph,
   }
