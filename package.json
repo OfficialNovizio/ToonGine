@@ -90,10 +90,9 @@
   },
   "files": [
     "dist/",
+    "scripts/",
     "toongine.js",
     "README.md",
-    "LICENSE",
-    ".code-review-graph/graph.html",
-    ".code-review-graph/wiki/"
+    "LICENSE"
   ]
 }

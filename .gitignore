@@ -8,7 +8,8 @@ toongine-1.5.5.tgz
 templates/
 src/
 cli/
-scripts/
+scripts/*.js.map
+scripts/*.tsbuildinfo
 tests/
 supabase/
 docs/
