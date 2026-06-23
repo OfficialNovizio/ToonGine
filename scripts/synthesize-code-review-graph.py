@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 """Synthesize code-review-graph graph.db → .toon/code-review-graph/CODEGRAPH_REPORT.toon"""
 import sqlite3, sys, os
 from collections import Counter

@@ -605,11 +605,15 @@ function init() {
   if (!hasGraphify) {
     try {
       console.log('  📦 Installing graphify...')
-      require('child_process').execSync('pip3 install graphifyy  || pip install graphifyy ', { timeout: 120000 })
-      require('child_process').execSync('graphify install --platform hermes ', { timeout: 30000 })
+      require('child_process').execSync(`${PYTHON} -m pip install graphifyy`, { timeout: 120000 })
+      try {
+        require('child_process').execSync(`graphify install --platform hermes`, { timeout: 30000 })
+      } catch {
+        require('child_process').execSync(`${PYTHON} -m graphify install --platform hermes`, { timeout: 30000 })
+      }
       hasGraphify = true
     } catch (e) {
-      console.log(`  ⚠️  graphify install: ${e.message.trim().split('\\n')[0]}`)
+      console.log(`  ⚠️  graphify install: ${e.message.trim().split('\\\\n')[0]}`)
     }
   }
 
@@ -619,7 +623,11 @@ function init() {
     if (apiKey) {
       try {
         console.log('  🔬 Running graphify extract (semantic LLM)...')
-        require('child_process').execSync('graphify extract . --backend auto --out .toon/graphify', { timeout: 300000, cwd: cwd })
+        try {
+          require('child_process').execSync('graphify extract . --backend auto --out .toon/graphify', { timeout: 300000, cwd: cwd })
+        } catch {
+          require('child_process').execSync(`${PYTHON} -m graphify extract . --backend auto --out .toon/graphify`, { timeout: 300000, cwd: cwd })
+        }
         console.log('  ✅ Graphify → .toon/graphify/graphify-out/')
         // Move graphify-out/* up one level into .toon/graphify/
         const gfOut = path.join(cwd, '.toon', 'graphify', 'graphify-out')
@@ -671,17 +679,21 @@ function init() {
   if (!features.codeReviewGraph) {
     try {
       console.log('  📦 Installing code-review-graph...')
-      require('child_process').execSync('pip3 install code-review-graph  || pip install code-review-graph ', { timeout: 60000 })
+      require('child_process').execSync(`${PYTHON} -m pip install code-review-graph`, { timeout: 60000 })
       features.codeReviewGraph = true
     } catch (e) {
-      console.log(`  ⚠️  code-review-graph install: ${e.message.trim().split('\\n')[0]}`)
+      console.log(`  ⚠️  code-review-graph install: ${e.message.trim().split('\\\\n')[0]}`)
     }
   }
 
   if (features.codeReviewGraph) {
-    // Step A: Wire to platforms (creates .mcp.json, AGENTS.md etc — we'll clean up)
+    // Step A: Wire to platforms
     try {
-      require('child_process').execSync('code-review-graph install --yes', { timeout: 30000, cwd: cwd })
+      try {
+        require('child_process').execSync('code-review-graph install --yes', { timeout: 30000, cwd: cwd })
+      } catch {
+        require('child_process').execSync(`${PYTHON} -m code_review_graph install --yes`, { timeout: 30000, cwd: cwd })
+      }
       console.log('  ✅ code-review-graph wired')
     } catch (e) {
       console.log(`  ⚠️  code-review-graph install: ${e.message.trim().split('\\n')[0]}`)
@@ -694,7 +706,11 @@ function init() {
         require('child_process').execSync('git init', { timeout: 10000, cwd })
         console.log('  📦 git init (required by code-review-graph)')
       }
-      require('child_process').execSync('code-review-graph build --data-dir .toon/code-review-graph/', { timeout: 60000, cwd: cwd })
+      try {
+        require('child_process').execSync('code-review-graph build --data-dir .toon/code-review-graph/', { timeout: 60000, cwd: cwd })
+      } catch {
+        require('child_process').execSync(`${PYTHON} -m code_review_graph build --data-dir .toon/code-review-graph/`, { timeout: 60000, cwd: cwd })
+      }
       console.log('  ✅ Code-Review-Graph → .toon/code-review-graph/')
       // Synthesize graph.db → CODEGRAPH_REPORT.toon
       try {
@@ -1482,7 +1498,11 @@ function rebuild() {
   const apiKey = process.env.DEEPSEEK_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || ''
   if (apiKey) {
     try {
-      require('child_process').execSync('graphify extract . --backend auto --out .toon/graphify', { timeout: 300000, cwd })
+      try {
+        require('child_process').execSync('graphify extract . --backend auto --out .toon/graphify', { timeout: 300000, cwd })
+      } catch {
+        require('child_process').execSync(`${PYTHON} -m graphify extract . --backend auto --out .toon/graphify`, { timeout: 300000, cwd })
+      }
       console.log('  ✅ graphify rebuilt')
       // Flatten graphify-out/
       const gfOut = path.join(toonDir, 'graphify', 'graphify-out')
@@ -1511,7 +1531,11 @@ function rebuild() {
     if (!fs.existsSync(path.join(cwd, '.git'))) {
       require('child_process').execSync('git init', { timeout: 10000, cwd })
     }
-    require('child_process').execSync('code-review-graph build --data-dir .toon/code-review-graph/', { timeout: 60000, cwd })
+    try {
+      require('child_process').execSync('code-review-graph build --data-dir .toon/code-review-graph/', { timeout: 60000, cwd })
+    } catch {
+      require('child_process').execSync(`${PYTHON} -m code_review_graph build --data-dir .toon/code-review-graph/`, { timeout: 60000, cwd })
+    }
     console.log('  ✅ graph.db rebuilt')
     const synthScript = path.join(__dirname, 'scripts', 'synthesize-code-review-graph.py')
     if (fs.existsSync(synthScript)) {
