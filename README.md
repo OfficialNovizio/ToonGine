@@ -43,6 +43,94 @@ Project Source Code
 
 **Result:** Hermes agents can explore your codebase, find callers, analyze impact, and search symbols — all at runtime.
 
+## Workflow — 7 Phases
+
+Every `npx toongine init` runs this exact sequence:
+
+### Phase 1 — Detect
+```
+python --version           → found ✓
+pip list                   → check graphify, code-review-graph installed
+which codegraph            → check codegraph installed
+```
+Windows-safe: uses `python` / `where` on Windows, `python3` / `which` on Linux.
+
+### Phase 2 — Install Missing Tools
+```
+pip install graphifyy              → semantic community detection
+pip install code-review-graph      → tree-sitter AST analyzer
+npm install -g @colbymchenry/codegraph  → import dependency mapper
+```
+Skips tools already installed. Uses `python -m pip` as fallback if pip not on PATH.
+
+### Phase 3 — Build 3 Graphs
+```
+codegraph init                   → .codegraph/codegraph.db (import deps, hub files)
+graphify extract . --backend auto → .toon/graphify/graph.json (community structure)
+code-review-graph build           → .toon/code-review-graph/graph.db (AST symbols, call graphs)
+```
+Falls back to `python -m graphify` / `python -m code_review_graph` if CLI not on PATH. Falls back to built-in regex analyzer if no API key.
+
+### Phase 4 — Synthesize TOON Reports
+```
+synthesize-codegraph.py         → .toon/codegraph/CODEGRAPH_REPORT.toon
+synthesize-graphify.py          → .toon/graphify/GRAPH_REPORT.toon
+synthesize-code-review-graph.py → .toon/code-review-graph/CODEGRAPH_REPORT.toon
+```
+Each script builds abbreviation dictionaries (e.g. `authentication` → `§42`) so Hermes reads compressed data. UTF-8 encoding enforced on all file writes (Windows-safe).
+
+### Phase 5 — Deploy 24 Agents
+```
+.toon/agents/
+  CEO/marcus/MEMORY.md          → "I am Marcus, CEO of YVON OS..."
+  COO/diana/MEMORY.md            → "I am Diana, COO..."
+  Technical/dev/MEMORY.md       → "I am Dev, tech lead..."
+  ... (24 agents, 8 departments)
+```
+Each agent gets a MEMORY.md with persona, role, and department context. These are the files Hermes loads when role-playing agents.
+
+### Phase 6 — Wire MCP Bridge
+```
+wire-hermes-mcp.py → edits ~/.hermes/config.yaml
+```
+Adds 5 graph tools as MCP stdio server + permissions. Platform-aware: writes `python` on Windows, `python3` on Linux/Mac.
+
+### Phase 7 — Dashboard (optional)
+```
+toongine dashboard              → localhost:4200
+```
+3-tab HTML dashboard: Token Burn, Agents & Memory, Health Metrics. Reads real data from `.toon/`.
+
+## Runtime — After Init
+
+```
+Code changes
+      │
+      ▼
+toongine watch (2-tier file watcher)
+      │
+      ├── 2s debounce → rebuild unified graph
+      └── 5min timer  → rebuild all 3 tool graphs
+      │
+      ▼
+Hermes agent asks: "who calls authenticate()?"
+      │
+      ▼
+toon_graph_callers("authenticate") → returns callers from unified.db
+      │
+      ▼
+Agent gets 29 tokens of context instead of 4.5MB of raw files
+```
+
+### Hermes With vs Without
+
+| Without ToonGine | With ToonGine |
+|---|---|
+| Read files manually | `toon_graph_explore("auth flow")` |
+| Grep for callers | `toon_graph_callers("login")` |
+| Trace impact manually | `toon_graph_impact("config.ts")` |
+| No code awareness | 4,708 nodes, 30,010 edges indexed |
+
 ## What Ships
 
 After `npx toongine init`:
