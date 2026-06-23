@@ -1737,3 +1737,126 @@ Matched:  Planning, delegation, self-verification, belief graphs,
 
 Unmatched: Context size, vision, raw weight quality, emergence
 ```
+
+
+---
+
+## 21. CODING ENGINE — AST-Aware Code Analysis
+
+**File:** `.toon/hermes/caos/coding_engine.py`
+
+Fable 5 beats other models in coding because it doesn't generate text blindly.
+CAOS matches this with structured code analysis before any output is delivered.
+
+**What it checks:**
+- 12 anti-patterns: god functions, bare excepts, mutable defaults, hardcoded secrets, eval(), SQL injection, unsafe deserialization, circular imports, too many args, callback hell, `any` type (TS), non-null assertion (TS)
+- Language-specific good patterns: type hints, docstrings, context managers, error handling, async/await
+- Project rules from `.toon/hermes/caos/rules/coding_rules.json`
+- Past mistake patterns from `.toon/hermes/caos/mistakes/patterns.json`
+- Spec compliance: are edge cases handled? constraints followed?
+
+**Spec Extraction:**
+`CodeSpec.from_task("build login system")` produces a structured spec with features, inputs, outputs, edge cases, constraints, tests, and acceptance criteria. No more guessing what the user wants.
+
+**Mistake Learning:**
+When Quinn catches an error, `engine.learn_from_mistake()` extracts a regex pattern and stores it. Next time any agent works on similar code, they get a prevention rule injected.
+
+**Pipeline:** Quinn phase → `CodingEngine.analyze()` → CRITICAL/ERROR issues = REJECTED
+
+
+---
+
+## 22. REASONING ENGINE — Evidence Chains & Fallacy Detection
+
+**File:** `.toon/hermes/caos/reasoning_engine.py`
+
+Not generating conclusions — building EVIDENCE CHAINS that trace every claim to a verifiable source.
+
+**What it detects:**
+- 10 logical fallacies: circular reasoning, false dichotomy, hasty generalization, appeal to authority, slippery slope, straw man, post hoc, begging the question, ad hominem, motivated reasoning
+- 10 cognitive biases: confirmation, overconfidence, anchoring, availability, survivorship, recency, framing, sunk cost, bandwagon, Dunning-Kruger
+
+**First Principles Library:**
+CS (Turing completeness, halting problem, CAP theorem), Security (least privilege, defense in depth, never trust input, Kerckhoffs), Math (Bayes theorem, law of large numbers, regression to mean). Agents derive conclusions FROM principles, not around them.
+
+**Bayesian Belief Updating:**
+`engine.update_belief(prior=0.5, evidence_strength=0.8, reliability=0.7)` → posterior 0.67. Beliefs are probability distributions, not binary true/false.
+
+**Uncertainty Quantification:**
+Every conclusion gets: confidence point estimate, lower/upper bound, evidence count, known unknowns list, surfaced assumptions. No false certainty.
+
+**Pipeline:** Kahneman phase → `ReasoningEngine.audit()` → fallacies or weak evidence = REJECTED
+
+
+---
+
+## 23. AGENTIC COORDINATOR — Capability-Aware Task Planning
+
+**File:** `.toon/hermes/caos/agentic_coordinator.py`
+
+Not blindly delegating — matching tasks to agent capabilities, scheduling for maximum parallelism, re-planning on failure.
+
+**Agent Selection:**
+`fitness_score(agent, category, complexity)` weights: category match (40%), historical success rate (30%), complexity handling (20%), minus load penalty, minus strike penalty. Best agent wins.
+
+**Task Decomposition:**
+`AgenticCoordinator.plan("build auth system")` produces: DB schema → API endpoints → UI components → tests → security audit. Each with estimated minutes, dependencies, assigned agent, success criteria, risk factors.
+
+**Speculative Execution:**
+If agent A has 88% success rate and B depends on A → start B speculatively while A runs. A fails → discard B's work. A succeeds → B already has progress.
+
+**Dynamic Re-planning:**
+Task fails → fallback agent (from registry) → if fail again → split into smaller sub-tasks → if critical path → escalate to Council.
+
+**Pipeline:** Marcus phase → `AgenticCoordinator.plan()` replaces `_marcus_plan()`
+
+
+---
+
+## 24. MISTAKE RULES ENGINE — Convert Errors Into Prevention
+
+**File:** `.toon/hermes/caos/mistake_rules.py`
+
+Every mistake becomes a queryable, matchable PREVENTION RULE.
+
+**Pipeline:**
+```
+Mistake → extract pattern → generalize into rule → store → inject at session start
+```
+
+**10 Built-in Rules:**
+Auth→constant-time compare, SQL→parameterized, Deploy→verify tests, Input→sanitize, Async→handle rejections, Commit→run linter, Schema→reversible migration, API→rate limit, Errors→no stack traces, Config→env vars
+
+**Session Injection:**
+Before agent starts task, `engine.get_session_context()` returns:
+- 🛑 Prevention Rules active for this task
+- 📋 Your past mistakes (don't repeat these)
+- 🔍 Pattern watchlist (regex patterns to avoid)
+
+**Feedback Loop:**
+Rules that fire incorrectly get degraded (HARD_BLOCK→WARN after 5 false positives). Precision tracking ensures rules stay useful.
+
+**Pipeline:** After every task failure → `MistakeRulesEngine.record_mistake()`. Before every task → `inject_mistake_rules()` into session context.
+
+
+---
+
+## Complete File Coverage
+
+| Section | File | Status |
+|---------|------|--------|
+| 1-3 | Background, Cognitive Model, Architecture | ✅ |
+| 4-5 | `algorithms.py`, `algorithms_v2.py` | ✅ |
+| 6 | `pipeline.py` | ✅ |
+| 10 | `council.py`, `self_counter.py`, `counter_user.py`, `challenge_protocol.py` | ✅ |
+| 13 | `memory_system.py`, `memory_store.py`, `memory_tools.py` | ✅ |
+| 14 | `discipline_gate.py` | ✅ |
+| 17-18 | Injection architecture, graph tools | ✅ |
+| 19 | Gap closure (70%→90%) | ✅ |
+| 20 | `agent_registry.py` | ✅ |
+| 21 | `coding_engine.py` | ✅ |
+| 22 | `reasoning_engine.py` | ✅ |
+| 23 | `agentic_coordinator.py` | ✅ |
+| 24 | `mistake_rules.py` | ✅ |
+
+**All 16 Python files now have dedicated documentation.**
