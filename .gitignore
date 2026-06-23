@@ -2,6 +2,14 @@ node_modules/
 *.js.map
 .DS_Store
 .toon/
+!.toon/hermes/
+!.toon/docs/
+!.toon/agents/
+!.toon/config.json
+!.toon/graphs/
+!.toon/codegraph/
+!.toon/graphify/
+!.toon/code-review-graph/
 
 # Generated — not part of the package
 toongine-1.5.5.tgz
