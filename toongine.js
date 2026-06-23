@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// toongine CLI — ToonGine v1.3.0
+// toongine CLI — ToonGine v1.6.0
 // One command: npx toongine init — builds everything
 
 const fs = require('fs')
@@ -328,7 +328,7 @@ function autoFixIssues(issues, rootDir) {
 
 function help() {
   console.log(`
-ToonGine CLI v1.5.4
+ToonGine CLI v1.6.0
 
   toongine init          One command to activate everything (creates .toon/ structure)
   toongine integrate     Wire engine into an existing project (safe, non-destructive)
