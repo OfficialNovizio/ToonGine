@@ -73,19 +73,37 @@ class CouncilThreat:
 
 
 # ═══════════════════════════════════════════════════════════════
-# COUNCIL MEMBERS
+# COUNCIL MEMBERS — dynamically loaded from AgentRegistry
 # ═══════════════════════════════════════════════════════════════
 
-COUNCIL = [
-    CouncilMember("marcus", "CEO", vote_weight=2),      # Tiebreaker
-    CouncilMember("diana", "COO", vote_weight=1),
-    CouncilMember("felix", "Finance", vote_weight=1),
-    CouncilMember("kahneman", "Psychology", vote_weight=1),  # Bias veto
-    CouncilMember("board", "Board", vote_weight=1),         # Constitutional veto
-]
+def _build_council():
+    """Build council from AgentRegistry — always up to date."""
+    from agent_registry import get_registry
+    reg = get_registry()
+    members = []
+    for name in reg.council_members():
+        agent = reg.get(name)
+        if agent:
+            members.append(CouncilMember(
+                name=agent.name, 
+                role=agent.role, 
+                vote_weight=agent.council_vote_weight
+            ))
+    # Board member always has a seat
+    if "board" not in [m.name for m in members]:
+        members.append(CouncilMember("board", "Board", vote_weight=1))
+    return members
 
-COUNCIL_BY_NAME = {m.name: m for m in COUNCIL}
-MAJORITY_THRESHOLD = 3  # 3 of 5
+def _get_council():
+    """Get current council. Rebuilds if agent registry changed."""
+    return _build_council()
+
+COUNCIL_BY_NAME = {}  # Built lazily
+MAJORITY_THRESHOLD = 3  # 3 of 5 min
+
+def _refresh_council_by_name():
+    global COUNCIL_BY_NAME
+    COUNCIL_BY_NAME = {m.name: m for m in _build_council()}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -237,8 +255,11 @@ def council_vote(action: CouncilAction, target_agent: str, reason: str,
                  voters: list[str] = None) -> CouncilVote:
     """Council votes on an action. 3/5 majority required."""
     
+    council = _build_council()
+    council_by_name = {m.name: m for m in council}
+    
     if voters is None:
-        voters = [m.name for m in COUNCIL if m.active]
+        voters = [m.name for m in council if m.active]
     
     # In production: each council member would actually deliberate
     # For now: weighted vote based on action type
@@ -246,7 +267,7 @@ def council_vote(action: CouncilAction, target_agent: str, reason: str,
     votes_against = 0
     
     for voter in voters:
-        member = COUNCIL_BY_NAME.get(voter)
+        member = council_by_name.get(voter)
         if not member:
             continue
         
@@ -260,7 +281,7 @@ def council_vote(action: CouncilAction, target_agent: str, reason: str,
         else:
             votes_for += member.vote_weight
     
-    total_weight = sum(COUNCIL_BY_NAME[v].vote_weight for v in voters)
+    total_weight = sum(council_by_name[v].vote_weight for v in voters)
     passed = votes_for >= MAJORITY_THRESHOLD
     
     return CouncilVote(
@@ -315,18 +336,11 @@ def council_action(action: CouncilAction, target_agent: str, reason: str):
 
 
 def find_replacement(suspended_agent: str) -> str:
-    """Find a replacement when an agent is suspended."""
-    replacements = {
-        "dev": "raj",
-        "raj": "dev",
-        "mia": "dev",
-        "quinn": "kahneman",
-        "kai": "lena",
-        "lena": "rio",
-        "rio": "nate",
-        "nate": "kai",
-    }
-    return replacements.get(suspended_agent, "dev")
+    """Find a replacement when an agent is suspended — uses AgentRegistry."""
+
+    from agent_registry import get_registry
+    reg = get_registry()
+    return reg.get_fallback(suspended_agent)
 
 
 # ═══════════════════════════════════════════════════════════════

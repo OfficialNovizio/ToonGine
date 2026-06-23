@@ -379,8 +379,10 @@ def _ensure_directories():
 
 def _council_preamble() -> dict:
     """Check agent statuses before starting pipeline."""
+    from agent_registry import get_registry
+    reg = get_registry()
     blocked = []
-    for agent in ["dev", "raj", "mia", "quinn", "kai", "lena", "rio", "nate", "felix"]:
+    for agent in reg.active_agents():
         status = check_agent_status(agent)
         if status["status"] == "suspended":
             blocked.append(agent)
@@ -475,9 +477,10 @@ def _quinn_verify(output: str, node: TaskNode) -> dict:
     return {"passed": True, "reason": "Verification passed", "issues": []}
 
 def _reassign_node(plan: Plan, node: TaskNode, agent_status: dict):
-    """Reassign a node when agent is suspended."""
-    replacements = {"dev": "raj", "raj": "dev", "mia": "dev", "quinn": "kahneman"}
-    new_agent = replacements.get(node.agent, "dev")
+    """Reassign a node when agent is suspended — uses AgentRegistry fallback chain."""
+    from agent_registry import get_registry
+    reg = get_registry()
+    new_agent = reg.get_fallback(node.agent)
     print(f"       🔄 Reassigning {node.agent} → {new_agent}")
     node.agent = new_agent
 
@@ -500,15 +503,10 @@ def _issue_strike_for_node(node: TaskNode, mistake_type: str, context: str):
         print(f"{'='*60}\n")
 
 def _get_department(agent: str) -> str:
-    """Map agent to department."""
-    dept_map = {
-        "dev": "technical", "raj": "technical", "mia": "technical", "quinn": "technical",
-        "kai": "marketing", "lena": "marketing", "rio": "marketing", "nate": "marketing",
-        "felix": "finance", "kahneman": "psychology",
-        "comply": "legal", "docs": "legal", "guard": "legal",
-        "vette": "research", "depth": "research", "synth": "research",
-    }
-    return dept_map.get(agent, "technical")
+    """Map agent to department — uses AgentRegistry as source of truth."""
+    from agent_registry import get_registry
+    reg = get_registry()
+    return reg.get_department(agent)
 
 def _checkpoint(plan: Plan, version: int):
     """Save plan checkpoint."""

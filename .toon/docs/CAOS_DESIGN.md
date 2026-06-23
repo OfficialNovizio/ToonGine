@@ -1353,7 +1353,103 @@ AI = Amplified human pattern recognition, scaled to inhuman volumes, with self-v
 - **Bayesian Brain Hypothesis** — Knill & Pouget (2004)
 - **MetaGPT** — Multi-agent meta-programming framework (Hong et al., 2023)
 - **AutoGPT/BabyAGI** — Task-driven autonomous agents
-- **Claude Fable 5** — Anthropic Mythos-level model capabilities (2026)
+
+
+---
+
+## 20. AGENT LIFECYCLE — Add, Remove, Edit Agents at Runtime
+
+### The Registry Pattern
+
+All agent definitions live in ONE file: `.toon/hermes/caos/agent_registry.py`.
+
+All other files import from the registry — never hardcode agent names.
+
+```
+npx toongine agent add nova --dept frontend --role "UI Engineer"
+  → AgentRegistry.add("nova", ...)
+  → Persists to .toon/hermes/caos/registry/agents.json
+  → Creates memory/strike/state directories
+  → AgenticCoordinator sees nova in next _load_capabilities()
+  → Council sees nova's capabilities (but not council seat unless flagged)
+```
+
+### CLI
+
+```
+npx toongine agent list              # All agents with status/department/role
+npx toongine agent add <name> [...]  # Add new agent
+npx toongine agent remove <name>     # Archive (keeps memories)
+npx toongine agent edit <name> [...] # Modify capabilities
+npx toongine agent suspend <name>    # Suspend from rotation
+npx toongine agent reinstate <name>  # Reactivate
+```
+
+### Programmatic
+
+```python
+from agent_registry import AgentRegistry
+reg = AgentRegistry()
+
+# Add
+reg.add("nova", dept="frontend", role="UI Engineer",
+        categories=["frontend_ui", "testing_qa"],
+        specializations=["React", "playwright"],
+        success_rate=0.85, fallback_agent="mia")
+
+# Remove (archive)
+reg.remove("old_agent")  # Sets status=ARCHIVED, preserves memories
+
+# Edit
+reg.edit("raj", success_rate=0.92, 
+         specializations=["Python", "TypeScript", "Rust"])
+
+# Suspend / Reinstate
+reg.suspend("dev")     # Can't take new tasks, fallback used
+reg.reinstate("dev")   # Back in rotation
+
+# Query
+reg.active_agents()     # → ["dev", "raj", "mia", ...]
+reg.council_members()   # → ["marcus", "diana", "felix", "kahneman"]
+reg.get_fallback("mia") # → "kai" (or first available)
+reg.get_department("nova")  # → "frontend"
+```
+
+### What Happens When You Add/Remove
+
+| Action | Pipeline | Council | Coordinator | Memory |
+|--------|----------|---------|-------------|--------|
+| Add | Agent appears in _council_preamble() check | Not in council unless council_member=True | Coordinator loads capabilities | Memory stores initialized |
+| Remove | Agent skipped in status checks | Removed from council | Coordinator skips | Memories preserved (archive) |
+| Edit | Uses updated department/specialization | Updated vote weight if council | Updated success rate/complexity | Unchanged |
+| Suspend | Fallback agent used for tasks | Council votes to suspend | Fitness score drops to 0 | Strike record updated |
+
+### What's Wired into the Registry
+
+All 4 files now import from AgentRegistry:
+
+```
+pipeline.py:
+  _council_preamble()  → reg.active_agents()
+  _get_department()    → reg.get_department()
+  _reassign_node()     → reg.get_fallback()
+
+council.py:
+  _build_council()     → reg.council_members() + reg.get()
+  council_vote()       → _build_council()
+  find_replacement()   → reg.get_fallback()
+
+agentic_coordinator.py:
+  _load_capabilities() → reg.active_agents() + reg.get()
+
+No more hardcoded agent lists anywhere.
+```
+
+---
+
+**End of CAOS Design Document — v3.0**
+
+
 
 
 ---

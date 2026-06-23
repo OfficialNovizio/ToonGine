@@ -137,65 +137,10 @@ class CoordinationPlan:
 
 
 # ═══════════════════════════════════════════════════════════════
-# AGENT CAPABILITY MATRIX
-# ═══════════════════════════════════════════════════════════════
-
-DEFAULT_CAPABILITIES = [
-    AgentCapability(
-        agent="dev", 
-        categories=[TaskCategory.ARCHITECTURE, TaskCategory.BACKEND_API, TaskCategory.BUG_FIX],
-        success_rate=0.85, avg_time_minutes=45, max_complexity=0.9,
-        specializations=["system design", "Go", "Rust", "distributed systems"],
-    ),
-    AgentCapability(
-        agent="raj",
-        categories=[TaskCategory.BACKEND_API, TaskCategory.DATABASE, TaskCategory.PERFORMANCE],
-        success_rate=0.88, avg_time_minutes=40, max_complexity=0.85,
-        specializations=["Python", "TypeScript", "PostgreSQL", "API design"],
-    ),
-    AgentCapability(
-        agent="mia",
-        categories=[TaskCategory.FRONTEND_UI, TaskCategory.DOCUMENTATION],
-        success_rate=0.82, avg_time_minutes=35, max_complexity=0.75,
-        specializations=["React", "Next.js", "CSS", "design systems"],
-    ),
-    AgentCapability(
-        agent="quinn",
-        categories=[TaskCategory.TESTING_QA, TaskCategory.SECURITY_AUDIT, TaskCategory.BUG_FIX],
-        success_rate=0.92, avg_time_minutes=25, max_complexity=0.7,
-        specializations=["testing", "security audit", "code review", "CI/CD"],
-    ),
-    AgentCapability(
-        agent="kai",
-        categories=[TaskCategory.FRONTEND_UI, TaskCategory.DOCUMENTATION],
-        success_rate=0.78, avg_time_minutes=30, max_complexity=0.65,
-        specializations=["UI/UX", "accessibility", "design tokens"],
-    ),
-    AgentCapability(
-        agent="lena",
-        categories=[TaskCategory.FRONTEND_UI, TaskCategory.DOCUMENTATION],
-        success_rate=0.80, avg_time_minutes=30, max_complexity=0.7,
-        specializations=["animation", "responsive design", "mobile-first"],
-    ),
-    AgentCapability(
-        agent="rio",
-        categories=[TaskCategory.DEVOPS_INFRA, TaskCategory.PERFORMANCE],
-        success_rate=0.84, avg_time_minutes=50, max_complexity=0.85,
-        specializations=["Docker", "Kubernetes", "CI/CD", "monitoring"],
-    ),
-    AgentCapability(
-        agent="nate",
-        categories=[TaskCategory.BACKEND_API, TaskCategory.DATABASE],
-        success_rate=0.80, avg_time_minutes=35, max_complexity=0.7,
-        specializations=["Node.js", "MongoDB", "Redis", "WebSocket"],
-    ),
-    AgentCapability(
-        agent="felix",
-        categories=[TaskCategory.ARCHITECTURE, TaskCategory.SECURITY_AUDIT],
-        success_rate=0.86, avg_time_minutes=40, max_complexity=0.9,
-        specializations=["security", "compliance", "system architecture"],
-    ),
-]
+# AGENT CAPABILITY MATRIX — loaded from AgentRegistry (single source of truth)
+# The registry lives at .toon/hermes/caos/agent_registry.py
+# Use: from agent_registry import get_registry; reg = get_registry()
+# No hardcoded agents here anymore — add/remove/edit agents via registry.
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -230,20 +175,32 @@ class AgenticCoordinator:
         self.pattern_history = self._load_pattern_history()
     
     def _load_capabilities(self) -> dict[str, AgentCapability]:
-        """Load agent capabilities, merging defaults with learned data."""
-        caps = {c.agent: c for c in DEFAULT_CAPABILITIES}
+        """Load agent capabilities from AgentRegistry (single source of truth)."""
+        from agent_registry import get_registry, TaskCategory as RegCat
+        reg = get_registry(str(self.toon_dir))
         
-        if self.capabilities_file.exists():
-            try:
-                with open(self.capabilities_file) as f:
-                    data = json.load(f)
-                    for agent, cap_data in data.items():
-                        if agent in caps:
-                            # Update with learned data
-                            caps[agent].success_rate = cap_data.get("success_rate", caps[agent].success_rate)
-                            caps[agent].avg_time_minutes = cap_data.get("avg_time_minutes", caps[agent].avg_time_minutes)
-            except Exception:
-                pass
+        caps = {}
+        for name in reg.active_agents():
+            agent = reg.get(name)
+            if not agent:
+                continue
+            
+            # Map registry categories to coordinator TaskCategory
+            categories = []
+            for cat_str in agent.categories:
+                try:
+                    categories.append(TaskCategory(cat_str))
+                except ValueError:
+                    pass
+            
+            caps[name] = AgentCapability(
+                agent=name,
+                categories=categories,
+                success_rate=agent.success_rate,
+                avg_time_minutes=agent.avg_time_minutes,
+                max_complexity=agent.max_complexity,
+                specializations=agent.specializations,
+            )
         
         return caps
     
