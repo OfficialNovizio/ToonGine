@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// toongine CLI — ToonGine v1.7.1
+// toongine CLI — ToonGine v5.0.0 — CAOS Cognitive Agent OS
 // One command: npx toongine init — builds everything
 
 const fs = require('fs')
@@ -379,7 +379,7 @@ Project structure (after init):
 
 function init() {
   const cwd = process.cwd()
-  console.log('\n  🚀 ToonGine v1.7.1 — Activating...\n')
+  console.log('\\n  🚀 ToonGine v5.0.0 — CAOS Cognitive Agent OS — Activating...\\n')
 
   // ─── Detect features ─────────────────────────────────────────────────────
   const features = {
@@ -798,7 +798,7 @@ function init() {
 
   // ─── Write config ────────────────────────────────────────────────────────
   const config = {
-    version: '1.6.0',
+    version: '5.0.0',
     projectRoot: cwd,
     graphifyReport: path.join(cwd, '.toon', 'graphify', 'GRAPH_REPORT.md'),
     codegraphReport: path.join(cwd, '.toon', 'codegraph', 'CODEGRAPH_REPORT.md'),

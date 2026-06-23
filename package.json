@@ -1,7 +1,7 @@
 {
   "name": "toongine",
-  "version": "1.7.1",
-  "description": "TOON V4 — graph intelligence bridge for AI agents. 99.97% compression, 24 agents, 3-tool unified graph, 5 MCP tools.",
+  "version": "5.0.0",
+  "description": "TOON V5 — CAOS Cognitive Agent Operating System. 18 engines, 14 agents, real Hermes/DeepSeek execution, SQLite FTS5 memory, council deliberation, discipline gate, 5 MCP graph tools.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -13,15 +13,9 @@
     "./toon/auto/middleware": "./dist/toon/auto/middleware.js",
     "./toon/auto/decoder": "./dist/toon/auto/decoder.js",
     "./toon/auto/encoder": "./dist/toon/auto/encoder.js",
-    "./toon/v3": "./dist/toon/index.js",
-    "./toon/v3/engine": "./dist/toon/v3/engine.js",
-    "./toon/v3/compile": "./dist/toon/v3/compile.js",
-    "./toon/v3/stemmer": "./dist/toon/v3/stemmer.js",
-    "./toon/v3/bpe": "./dist/toon/v3/bpe.js",
-    "./toon/v3/resolver": "./dist/toon/v3/resolver.js",
-    "./toon/v3/sync-writer": "./dist/toon/v3/sync-writer.js",
-    "./toon/v3/dual-docs": "./dist/toon/v3/dual-docs.js",
+    "./toon/v4": "./dist/toon/v4/index.js",
     "./toon/v4/stratify": "./dist/toon/v4/stratify.js",
+    "./toon/v5": "./dist/toon/v4/index.js",
     "./agents": "./dist/agents/index.js",
     "./algorithms": "./dist/algorithms/index.js",
     "./adapters": "./dist/adapters/index.js",
@@ -55,7 +49,7 @@
   "scripts": {
     "test": "echo ok",
     "prepare": "",
-    "postinstall": "echo ToonGine v1.5.5",
+    "postinstall": "echo ToonGine v5.0.0 — CAOS Cognitive Agent OS",
     "preuninstall": "echo Removing ToonGine"
   },
   "keywords": [
