@@ -624,9 +624,9 @@ function init() {
       try {
         console.log('  🔬 Running graphify extract (semantic LLM)...')
         try {
-          require('child_process').execSync('graphify extract . --backend auto --out .toon/graphify', { timeout: 300000, cwd: cwd })
+          require('child_process').execSync('graphify extract . --backend deepseek --out .toon/graphify', { timeout: 300000, cwd: cwd })
         } catch {
-          require('child_process').execSync(`${PYTHON} -m graphify extract . --backend auto --out .toon/graphify`, { timeout: 300000, cwd: cwd })
+          require('child_process').execSync(`${PYTHON} -m graphify extract . --backend deepseek --out .toon/graphify`, { timeout: 300000, cwd: cwd })
         }
         console.log('  ✅ Graphify → .toon/graphify/graphify-out/')
         // Move graphify-out/* up one level into .toon/graphify/
