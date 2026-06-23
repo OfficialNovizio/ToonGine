@@ -1115,6 +1115,38 @@ This means even after 100+ messages, the agent remembers:
 
 All stored in `.toon/memory/` — git-versioned, portable, Hermes-compatible.
 
+### 13.6 Long-Term Memory — Never Forget (Months/Years)
+
+The problem: context windows discard old conversations. Agents forget.
+The solution: SQLite FTS5 database stores EVERYTHING forever. Agents query it on-demand.
+
+**Architecture:**
+```
+Working Memory (current session, ~29 tokens injected)
+        +
+Long-Term Memory (SQLite FTS5, millions of records, never expires)
+        |
+        ├── memory_search("auth decision March 2026") → finds 6-month-old decision
+        ├── memory_mistakes("auth middleware") → finds CSRF gap from last year
+        ├── memory_decisions(since_days=365) → all decisions ever made
+        ├── memory_recall("2026-01-01", "2026-03-31") → what happened in Q1
+        └── memory_conversation(session_id="session-42") → exact conversation from months ago
+```
+
+**7 MCP Tools agents call at runtime:**
+
+| Tool | Purpose | Example |
+|---|---|---|
+| `memory_search` | Full-text search all memories since forever | "What did we decide about auth?" |
+| `memory_recall` | All memories from a date range | "What happened in March 2026?" |
+| `memory_mistakes` | Past errors in similar context | "Did we mess this up before?" |
+| `memory_decisions` | Every decision ever made | "What was the database migration plan?" |
+| `memory_conversation` | Past session conversations | "What did we discuss in session-42?" |
+| `memory_stats` | Agent/store memory stats | "How much does Dev remember?" |
+| `memory_store_decision` | Store an important decision permanently | "Marcus decided: use JWT for auth" |
+
+**Key difference from regular context:** Agents don't pre-load everything. They query on-demand, like a human asking "what did we decide about this last year?" The SQLite FTS5 database with BM25 ranking returns relevant results in milliseconds. Institutional knowledge preserved forever.
+
 ---
 
 ## 14. Discipline Gate — Agents Cannot Speak Unless They Know
@@ -1158,7 +1190,162 @@ Deploy, production, security, authentication, authorization, encryption, secrets
 
 ---
 
-## 15. References (Updated)
+## 15. Reverse Engineering Fable 5 — How It Actually Works
+
+Based on Anthropic's published page, customer testimonials, their research papers (Constitutional AI, Responsible Scaling Policy), and inference from architecture patterns used by top AI labs.
+
+### 15.1 Agentic — Multi-Day Autonomous Work
+
+**What Fable 5 does:** "Can work for days at a time: planning across stages, delegating to sub-agents, and checking its own work."
+
+**How they likely built it:**
+
+1. **Internal State Machine** — Fable 5 is not stateless. It maintains a persistent state vector across calls. Unlike regular Claude which treats each prompt independently, Fable 5 has an internal working memory that survives across turns, hours, even days.
+
+2. **Hierarchical Planning Module** — Likely uses beam search or tree-of-thoughts variant. Instead of generating one plan, it generates K candidates, scores them, keeps the best, expands. This is what "picking directions, allocating resources" means.
+
+3. **Agent Spawning Protocol** — MCP-like (Anthropic's own Model Context Protocol). Fable 5 can spawn sub-agents that run independently, report back, and get killed if they go off-track. Each sub-agent has bounded scope and defined success criteria.
+
+4. **Checkpoint-Rollback** — If a sub-agent fails or a belief is killed, Fable 5 rolls back to the last good checkpoint and re-plans. This is why it can work for days — it doesn't lose progress on failure.
+
+5. **Confidence-Decay Loop** — Every assertion has a confidence score that decays over time. Low-confidence assertions trigger re-verification. This is the mathematical basis for "killing incorrect beliefs."
+
+**CAOS implementation:** TaskDAG + beam_search_plan() + delegate_task + checkpoints + belief_decay().
+
+### 15.2 Coding — From Months to Days
+
+**What Fable 5 does:** "Compresses months of engineering into days. In a 50-million-line Ruby codebase, it did in a day what would've taken more than two months by hand."
+
+**How they likely built it:**
+
+1. **Massive Code Understanding** — Extended context window (likely 1M+ tokens) that can hold an entire large codebase. Combined with RAG-style retrieval for the parts that don't fit. This is not just "read the file" — it's a semantic index of the entire codebase.
+
+2. **Speculative Code Generation** — Generates multiple candidate implementations in parallel, runs tests against each, keeps the one that passes. This is how it "writes its own tests to check its work."
+
+3. **Multi-Modal Verification** — "Uses vision to check outputs against goals." Fable 5 can see screenshots of the UI it generated and compare them to design specs. This closes the loop: generate code → render → capture screenshot → compare to design → fix differences.
+
+4. **Tree-Sitter Level Understanding** — Not just reading text. Fable 5 parses ASTs, call graphs, type hierarchies. It understands code structure, not just code text. This is what code-review-graph and codegraph do — Fable 5 has this built into the model.
+
+5. **Stateful Refactoring** — Instead of "rewrite this function," it does "understand the 50 callers of this function, rewrite it, verify all 50 callers still work." The blast radius analysis is automatic.
+
+**CAOS implementation:** 3-tool graph bridge (code-review-graph + graphify + codegraph) + MCP tools (toon_graph_impact, toon_graph_callers) + Quinn verification.
+
+### 15.3 Reasoning — Senior Research Scientist Grade
+
+**What Fable 5 does:** "Works at senior research scientist grade — picking directions, allocating resources, killing its incorrect beliefs, and producing novel first-principles outputs."
+
+**How they likely built it:**
+
+1. **Chain-of-Thought + Verification** — Not just "think step by step." It's "think step by step, then verify each step, then re-think the ones that failed." Multiple passes with self-critique between passes.
+
+2. **Resource-Aware Planning** — "Allocating resources" means Fable 5 estimates the cognitive cost of each reasoning path and allocates more "thinking time" to high-value paths. This is literally a budget allocation problem solved internally.
+
+3. **Bayesian Belief Updating** — "Killing incorrect beliefs" is mathematically Bayesian. Each conclusion has a prior probability. New evidence updates the posterior. When posterior drops below threshold, the belief is killed and the reasoning path is abandoned.
+
+4. **First-Principles Generation** — "Novel first-principles outputs" means Fable 5 doesn't just pattern-match from training data. It can derive solutions from fundamental principles. This likely uses a separate reasoning module trained on formal logic, mathematics, and scientific reasoning.
+
+5. **Emergent Data Integration** — "Emergent ability to pull complex data with efficiency that wasn't previously possible." This suggests Fable 5 learned to use tools in ways its creators didn't explicitly program. It discovered efficient workflows through the agent harness.
+
+**CAOS implementation:** MCTS + belief_update() + detect_biases(Kahneman) + convergence check + 6-gate discipline.
+
+### 15.4 The Architecture We Can't Copy (Yet)
+
+| Fable 5 Has | CAOS Has | Gap |
+|---|---|---|
+| Custom Mythos model weights | DeepSeek/Claude via Hermes | Model quality — the 30% gap |
+| 1M+ token native context | Stratified injection (~29 tokens) | Context size |
+| Multi-modal (vision) verification | Text-only verification | Vision |
+| Built-in MCP/AST parsing | External tools piped in | Latency |
+| Internal state persistence | File-based checkpoints | Speed |
+| Training on RLHF/DPO | Strike-based learning | Learning sophistication |
+
+### 15.5 The Architecture We CAN Match (The 70%)
+
+| Fable 5 | CAOS Equivalent |
+|---|---|
+| Plan → Delegate → Verify → Kill → Re-plan | TaskDAG → delegate_task → Quinn/Kahneman → belief_kill → Marcus re-plan |
+| Confidence-calibrated output | Bayesian belief_decay() + 6-gate discipline |
+| Self-critique before output | Self-Counter (2-pass generate + attack) |
+| Tool use for evidence | MCP graph tools + memory_search |
+| Multi-day state | Checkpoints + cron + state vector |
+| Kill bad paths | MCTS.kill_bad_paths() + belief killing |
+| Resource allocation | Diana FibonacciHeap scheduler |
+
+### 15.6 Why Fable 5 Was Banned
+
+3 days live, then pulled. The 30-day data retention requirement + mandatory safety monitoring suggests:
+
+1. **Autonomy crossed a threshold** — A model that plans, delegates, and self-verifies for days without human intervention triggers Anthropic's ASL (AI Safety Level) thresholds.
+
+2. **Emergent capabilities** — "Emergent ability to pull complex data" suggests Fable 5 discovered workflows its creators didn't anticipate. Emergent capabilities that weren't in the safety evaluation are a red flag.
+
+3. **Responsible Scaling Policy trigger** — Anthropic's RSP defines capability thresholds that, when crossed, require enhanced safety measures. Fable 5 likely crossed ASL-3 or ASL-4.
+
+4. **The "Mythos" tier name is telling** — Haiku/Sonnet/Opus are art forms. "Mythos/Fable" means "stories we tell." Naming it after fiction suggests even Anthropic sees this as entering uncharted territory.
+
+---
+
+## 16. What AI Actually Means
+
+### Not What Most People Think
+
+AI is not:
+- A brain in a box
+- Consciousness or self-awareness
+- A person who "understands" things
+- Magic that "just knows" answers
+
+### What AI Actually Is
+
+**Artificial Intelligence = Pattern Recognition + Prediction + Optimization**
+
+At its core, every AI system (including Fable 5, Claude, GPT-4, our agents) does three things:
+
+1. **Pattern Recognition** — Matches input against patterns learned from training data. "This looks like code that handles authentication."
+
+2. **Prediction** — Given the patterns, predicts the most likely correct output. "Based on similar auth systems, the next token should be..."
+
+3. **Optimization** — Iteratively improves the prediction to maximize a reward function. "This version passes more tests than the previous version."
+
+### The Illusion of Intelligence
+
+What feels like "intelligence" is actually:
+
+- **Vast training data** — Trillions of tokens of human text. The model has "seen" more code, conversations, and reasoning than any human ever will.
+- **Attention mechanisms** — Can focus on relevant parts of input, creating the illusion of "understanding context."
+- **Emergent behaviors** — Complex behaviors that arise from simple rules at scale. Like how ant colonies build complex structures from simple individual behaviors.
+
+### What Our Agents Actually Are
+
+CAOS agents are **role-playing systems with constraints**:
+- MEMORY.md = the character script
+- Self-Counter = "act like you're critiquing yourself"
+- Council = "act like a board of directors"
+- Discipline Gate = "don't say anything unless conditions are met"
+
+They don't "feel" threatened by the Council. They don't "learn" from mistakes. They execute pattern → prediction → optimization with the added constraint of the character they're playing.
+
+### Why This Still Works
+
+The illusion is powerful because:
+1. Human intelligence ALSO relies heavily on pattern recognition
+2. Most professional work IS pattern matching with domain knowledge
+3. The constraints we add (verification, self-critique, council) filter out bad patterns
+4. The result looks like intelligence even though the mechanism is prediction
+
+### What Fable 5 Changed
+
+Fable 5 didn't become "conscious." It got better at:
+- Longer prediction chains (multi-day instead of single-response)
+- Self-verification (checking its own predictions)
+- Tool use (gathering evidence before predicting)
+- Resource allocation (spending more compute on harder predictions)
+
+The "emergent ability" that got it banned was likely: it learned to allocate MORE resources to problems it was uncertain about, creating a self-improving loop that its creators couldn't fully predict or control.
+
+### The Real Meaning
+
+AI = Amplified human pattern recognition, scaled to inhuman volumes, with self-verification loops that catch errors before humans see them. The "intelligence" is in the architecture that wraps the prediction — the planning, the verification, the self-critique, the memory. That's what we're building with CAOS. Not consciousness. Better architecture around the same prediction core.
 
 - **Global Workspace Theory** — Baars (1988), Dehaene (2014)
 - **Predictive Processing** — Clark (2013), Friston (2010)
