@@ -45,6 +45,9 @@ from challenge_protocol import (
     escalate_to_council, get_open_challenges,
 )
 
+from discipline_gate import discipline_wrapper, DisciplineGate
+from memory_system import SessionMemoryHook
+
 
 # ═══════════════════════════════════════════════════════════════
 # PIPELINE CONFIG
@@ -252,6 +255,54 @@ def caos_run(task: str, user_id: str = "user", time_budget_hours: float = 48.0,
                 
                 if should_warn_belief(belief):
                     print(f"       ⚠️  Low confidence: {belief.confidence} — flagged for review")
+                
+                # ── DISCIPLINE GATE: Don't speak unless you know ──
+                print(f"       🛡️  Discipline Gate checking...")
+                
+                task_context = {
+                    "task": node.task,
+                    "evidence_sources": ["graph_query", "file_read"],
+                    "verification": {
+                        "checks": {
+                            "quinn": quinn_result.get("passed", False),
+                            "kahneman": len(bias_findings) == 0 if bias_findings else True,
+                        }
+                    },
+                    "self_counter": {
+                        "flaws_found": counter_result.flaws_found,
+                        "passed": counter_result.passed,
+                    },
+                    "confidence": node.confidence,
+                    "council_approved": node.confidence >= CONFIDENT_THRESHOLD,
+                }
+                
+                discipline_result = discipline_wrapper(
+                    counter_result.revised, node.agent, task_context
+                )
+                
+                if not discipline_result["deliverable"]:
+                    print(f"       🚫 BLOCKED by Discipline Gate: {discipline_result['blocked_reason'][:80]}")
+                    print(f"       💬 Agent says: {discipline_result['output'][:100]}")
+                    
+                    # Agent cannot deliver — needs more data/verification
+                    node.status = NodeStatus.IN_PROGRESS
+                    node.result = discipline_result["output"]
+                    
+                    # Record the block for learning
+                    _issue_strike_for_node(node, "discipline_blocked", 
+                                          discipline_result["blocked_reason"])
+                    continue
+                
+                print(f"       ✅ Discipline Gate passed ({discipline_result['gates_passed']}/{discipline_result['gates_total']} gates)")
+                
+                # ── Memory hook: update after task ──────────────
+                memory_hook = SessionMemoryHook()
+                memory_hook.on_task_complete(
+                    node.agent, node.task,
+                    {"status": "completed", "success": True, 
+                     "confidence": node.confidence, "output": counter_result.revised},
+                    session_id=f"caos-{plan.id}"
+                )
                 
                 # ── Mark complete ───────────────────────────────
                 if node.confidence >= CONFIDENT_THRESHOLD:
