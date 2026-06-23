@@ -6,6 +6,13 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
+// ─── Platform helpers ────────────────────────────────────────────────────────
+const isWindows = process.platform === 'win32'
+const WHICH = isWindows ? 'where' : 'which'
+const PYTHON = isWindows ? 'python' : 'python3'
+const NULL_DEV = isWindows ? 'NUL' : '/dev/null'
+const PIPE_FAIL = isWindows ? '2>NUL' : '2>/dev/null'
+
 const command = process.argv[2] || 'help'
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -388,7 +395,7 @@ function init() {
 
   function checkCodeReviewGraph() {
     try {
-      const result = require('child_process').execSync('which code-review-graph', { encoding: 'utf-8', timeout: 5000 })
+      const result = require('child_process').execSync(`${WHICH} code-review-graph`, { encoding: 'utf-8', timeout: 5000 })
       return !!result.trim()
     } catch { return false }
   }
@@ -497,7 +504,7 @@ function init() {
   // Step 1: Ensure codegraph CLI is installed (global, one-time)
   let hasCodegraph = false
   try {
-    hasCodegraph = !!require('child_process').execSync('which codegraph', { encoding: 'utf-8', timeout: 5000 }).trim()
+    hasCodegraph = !!require('child_process').execSync(`${WHICH} codegraph`, { encoding: 'utf-8', timeout: 5000 }).trim()
   } catch (e) {}
   
   if (!hasCodegraph) {
@@ -532,7 +539,7 @@ function init() {
     try {
       const synthScript = path.join(__dirname, 'scripts', 'synthesize-codegraph.py')
       if (fs.existsSync(synthScript)) {
-        require('child_process').execSync(`python3 "${synthScript}" "${cwd}"`, { timeout: 30000 })
+        require('child_process').execSync(`${PYTHON} "${synthScript}" "${cwd}"`, { timeout: 30000 })
       }
     } catch (e) {
       console.log(`  ⚠️  synthesize: ${e.message.trim().split('\\n')[0]}`)
@@ -569,7 +576,7 @@ function init() {
           // Move into .toon/claude/ for safekeeping
           const toonClaudeDir = path.join(cwd, '.toon', 'claude')
           fs.mkdirSync(toonClaudeDir, { recursive: true })
-          const destName = sf.replace(/\//g, '_').replace(/^\./, '')
+          const destName = sf.replace(/[/\\]/g, '_').replace(/^\./, '')
           fs.renameSync(sfPath, path.join(toonClaudeDir, destName))
           console.log(`  🧹 Cleaned: ${sf} → .toon/claude/${destName}`)
         } catch (e) {
@@ -592,14 +599,14 @@ function init() {
 
   let hasGraphify = false
   try {
-    hasGraphify = !!require('child_process').execSync('which graphify', { encoding: 'utf-8', timeout: 5000 }).trim()
+    hasGraphify = !!require('child_process').execSync(`${WHICH} graphify`, { encoding: 'utf-8', timeout: 5000 }).trim()
   } catch (e) {}
 
   if (!hasGraphify) {
     try {
       console.log('  📦 Installing graphify...')
-      require('child_process').execSync('pip3 install graphifyy 2>/dev/null || pip install graphifyy 2>/dev/null', { timeout: 120000 })
-      require('child_process').execSync('graphify install --platform hermes 2>/dev/null', { timeout: 30000 })
+      require('child_process').execSync('pip3 install graphifyy  || pip install graphifyy ', { timeout: 120000 })
+      require('child_process').execSync('graphify install --platform hermes ', { timeout: 30000 })
       hasGraphify = true
     } catch (e) {
       console.log(`  ⚠️  graphify install: ${e.message.trim().split('\\n')[0]}`)
@@ -627,7 +634,7 @@ function init() {
           try {
             const synthScript = path.join(__dirname, 'scripts', 'synthesize-graphify.py')
             if (fs.existsSync(synthScript)) {
-              require('child_process').execSync(`python3 "${synthScript}" "${cwd}"`, { timeout: 30000 })
+              require('child_process').execSync(`${PYTHON} "${synthScript}" "${cwd}"`, { timeout: 30000 })
             }
           } catch (e2) {
             console.log(`  ⚠️  synthesize-graphify: ${e2.message.trim().split('\\n')[0]}`)
@@ -664,7 +671,7 @@ function init() {
   if (!features.codeReviewGraph) {
     try {
       console.log('  📦 Installing code-review-graph...')
-      require('child_process').execSync('pip3 install code-review-graph 2>/dev/null || pip install code-review-graph 2>/dev/null', { timeout: 60000 })
+      require('child_process').execSync('pip3 install code-review-graph  || pip install code-review-graph ', { timeout: 60000 })
       features.codeReviewGraph = true
     } catch (e) {
       console.log(`  ⚠️  code-review-graph install: ${e.message.trim().split('\\n')[0]}`)
@@ -693,7 +700,7 @@ function init() {
       try {
         const synthScript = path.join(__dirname, 'scripts', 'synthesize-code-review-graph.py')
         if (fs.existsSync(synthScript)) {
-          require('child_process').execSync(`python3 "${synthScript}" "${cwd}"`, { timeout: 30000 })
+          require('child_process').execSync(`${PYTHON} "${synthScript}" "${cwd}"`, { timeout: 30000 })
         }
       } catch (e2) {
         console.log(`  ⚠️  synthesize-crg: ${e2.message.trim().split('\\n')[0]}`)
@@ -807,7 +814,7 @@ function init() {
     try {
       const wireScript = path.join(__dirname, 'scripts', 'wire-hermes-mcp.py')
       if (fs.existsSync(wireScript)) {
-        require('child_process').execSync(`python3 "${wireScript}" "${cwd}"`, { timeout: 10000 })
+        require('child_process').execSync(`${PYTHON} "${wireScript}" "${cwd}"`, { timeout: 10000 })
       }
     } catch (e) {
       console.log(`  ⚠️  Hermes MCP auto-wire: ${e.message.trim().split('\n')[0]}`)
@@ -853,7 +860,7 @@ function doctor() {
   const hasClaude = !!process.env.ANTHROPIC_API_KEY
   let hasCodeReviewGraph = false
   try {
-    hasCodeReviewGraph = !!require('child_process').execSync('which code-review-graph', { encoding: 'utf-8', timeout: 5000 }).trim()
+    hasCodeReviewGraph = !!require('child_process').execSync(`${WHICH} code-review-graph`, { encoding: 'utf-8', timeout: 5000 }).trim()
   } catch {}
 
   // Count agents from .toon/agents/
@@ -1447,7 +1454,7 @@ function rebuild() {
     console.log('  ✅ codegraph.db rebuilt')
     const synthScript = path.join(__dirname, 'scripts', 'synthesize-codegraph.py')
     if (fs.existsSync(synthScript)) {
-      require('child_process').execSync(`python3 "${synthScript}" "${cwd}"`, { timeout: 30000 })
+      require('child_process').execSync(`${PYTHON} "${synthScript}" "${cwd}"`, { timeout: 30000 })
       console.log('  ✅ CODEGRAPH_REPORT.toon refreshed')
     }
     // Move .codegraph/ → .toon/codegraph/ if it leaked to root
@@ -1488,7 +1495,7 @@ function rebuild() {
       }
       const synthScript = path.join(__dirname, 'scripts', 'synthesize-graphify.py')
       if (fs.existsSync(synthScript)) {
-        require('child_process').execSync(`python3 "${synthScript}" "${cwd}"`, { timeout: 30000 })
+        require('child_process').execSync(`${PYTHON} "${synthScript}" "${cwd}"`, { timeout: 30000 })
         console.log('  ✅ GRAPH_REPORT.toon refreshed')
       }
     } catch (e) {
@@ -1508,7 +1515,7 @@ function rebuild() {
     console.log('  ✅ graph.db rebuilt')
     const synthScript = path.join(__dirname, 'scripts', 'synthesize-code-review-graph.py')
     if (fs.existsSync(synthScript)) {
-      require('child_process').execSync(`python3 "${synthScript}" "${cwd}"`, { timeout: 30000 })
+      require('child_process').execSync(`${PYTHON} "${synthScript}" "${cwd}"`, { timeout: 30000 })
       console.log('  ✅ CODEGRAPH_REPORT.toon refreshed')
     }
     // Clean leaked platform files
@@ -1783,7 +1790,7 @@ function hermes() {
 
           // Sync config
           require('child_process').execSync(
-            `scp -o ConnectTimeout=5 ${detection.host}:~/.hermes/config.yaml ${toonHermesDir}/hermes-config.yaml 2>/dev/null`,
+            `scp -o ConnectTimeout=5 ${detection.host}:~/.hermes/config.yaml ${toonHermesDir}/hermes-config.yaml `,
             { encoding: 'utf-8', timeout: 10000 }
           )
         } catch (e) {
@@ -1846,7 +1853,7 @@ function hermes() {
       try {
         const wireScript = path.join(__dirname, 'scripts', 'wire-hermes-mcp.py')
         if (fs.existsSync(wireScript)) {
-          require('child_process').execSync(`python3 "${wireScript}" "${cwd}"`, { timeout: 10000 })
+          require('child_process').execSync(`${PYTHON} "${wireScript}" "${cwd}"`, { timeout: 10000 })
         }
       } catch (e2) {
         console.log(`  ⚠️  MCP auto-wire: ${e2.message.trim().split('\n')[0]}`)
@@ -1926,7 +1933,7 @@ function sessionSearch() {
   
   const { execSync } = require('child_process')
   try {
-    const result = execSync(`python3 "${scriptPath}" ${args.join(' ')}`, { 
+    const result = execSync(`${PYTHON} "${scriptPath}" ${args.join(' ')}`, { 
       encoding: 'utf-8', 
       timeout: 10000,
       cwd: process.cwd()
