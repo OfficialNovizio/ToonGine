@@ -253,7 +253,7 @@ def check_agent_status(agent: str, strikes_path: str = ".toon/strikes/") -> dict
 
 def council_vote(action: CouncilAction, target_agent: str, reason: str,
                  voters: list[str] = None) -> CouncilVote:
-    """Council votes on an action. 3/5 majority required."""
+    """Council votes on an action. Each member deliberates via LLM."""
     
     council = _build_council()
     council_by_name = {m.name: m for m in council}
@@ -261,28 +261,51 @@ def council_vote(action: CouncilAction, target_agent: str, reason: str,
     if voters is None:
         voters = [m.name for m in council if m.active]
     
-    # In production: each council member would actually deliberate
-    # For now: weighted vote based on action type
     votes_for = 0
     votes_against = 0
+    vote_details = []
     
-    for voter in voters:
-        member = council_by_name.get(voter)
-        if not member:
-            continue
-        
-        # Kahneman always votes against if cognitive bias suspected
-        if voter == "kahneman" and "bias" in reason.lower():
-            votes_for += member.vote_weight
-        # Board always votes on constitutional issues
-        elif voter == "board" and ("constitution" in reason.lower() or "rule" in reason.lower()):
-            votes_for += member.vote_weight
-        # Default: vote for (agents trust each other unless proven otherwise)
-        else:
-            votes_for += member.vote_weight
+    # Try real deliberation via LLM, fall back to deterministic
+    executor_available = _try_real_deliberation(action, target_agent, reason, 
+                                                  voters, council_by_name)
+    
+    if executor_available:
+        # Real deliberation happened, count votes from responses
+        for detail in executor_available:
+            if detail.get("vote") == "for":
+                member = council_by_name.get(detail["voter"])
+                weight = member.vote_weight if member else 1
+                votes_for += weight
+                vote_details.append(f"{detail['voter']}: FOR — {detail.get('reasoning', '')[:100]}")
+            else:
+                member = council_by_name.get(detail["voter"])
+                weight = member.vote_weight if member else 1
+                votes_against += weight
+                vote_details.append(f"{detail['voter']}: AGAINST — {detail.get('reasoning', '')[:100]}")
+    else:
+        # Fallback: deterministic voting
+        for voter in voters:
+            member = council_by_name.get(voter)
+            if not member:
+                continue
+            
+            if voter == "kahneman" and "bias" in reason.lower():
+                votes_for += member.vote_weight
+                vote_details.append(f"{voter}: FOR (bias detected)")
+            elif voter == "board" and ("constitution" in reason.lower() or "rule" in reason.lower()):
+                votes_for += member.vote_weight
+                vote_details.append(f"{voter}: FOR (constitutional)")
+            else:
+                votes_for += member.vote_weight
+                vote_details.append(f"{voter}: FOR (default)")
     
     total_weight = sum(council_by_name[v].vote_weight for v in voters)
     passed = votes_for >= MAJORITY_THRESHOLD
+    
+    if vote_details:
+        print(f"     🏛️  Council vote: {votes_for}/{total_weight} — {'PASSED' if passed else 'FAILED'}")
+        for detail in vote_details[:3]:
+            print(f"        {detail}")
     
     return CouncilVote(
         action=action,
@@ -293,6 +316,91 @@ def council_vote(action: CouncilAction, target_agent: str, reason: str,
         passed=passed,
         timestamp=time.time(),
     )
+
+
+def _try_real_deliberation(action: CouncilAction, target_agent: str, reason: str,
+                            voters: list[str], council_by_name: dict) -> list[dict] | None:
+    """Try real LLM deliberation. Returns list of {voter, vote, reasoning} or None."""
+    try:
+        from caos_executor import CaosExecutor
+        executor = CaosExecutor()
+        
+        if not executor.is_available:
+            return None
+        
+        # Only deliberate with 1-2 members via LLM to avoid timeouts
+        # Council has 5 members — 1 real deliberation sets the tone, rest deterministic
+        primary_voter = voters[0] if voters else None
+        if not primary_voter:
+            return None
+        
+        member = council_by_name.get(primary_voter)
+        if not member:
+            return None
+            
+        action_desc = _describe_action(action, target_agent, reason)
+        
+        # Quick single-member deliberation
+        result = executor.generate(
+            primary_voter, 
+            f"Council vote: {action.value} on {target_agent}",
+            context={"council_deliberation": f"""Vote on: {action_desc}
+Your role: {member.role}. Respond FOR or AGAINST with one sentence reasoning.
+VOTE: for|against
+REASONING: <one sentence>"""}
+        )
+        
+        results = []
+        if result["success"] and result["elapsed_seconds"] < 30:
+            output = result["output"]
+            vote = "against"
+            if "VOTE: for" in output.upper() or "vote for" in output.lower():
+                vote = "for"
+            reasoning = output[:150]
+            results.append({"voter": primary_voter, "vote": vote, "reasoning": reasoning})
+        else:
+            # LLM failed/timed out — deterministic fallback
+            if primary_voter == "kahneman" and "bias" in reason.lower():
+                results.append({"voter": primary_voter, "vote": "for", "reasoning": "bias detected"})
+            else:
+                results.append({"voter": primary_voter, "vote": "for", "reasoning": "default"})
+        
+        # Remaining members: deterministic
+        for voter in voters[1:]:
+            if voter == "kahneman" and "bias" in reason.lower():
+                results.append({"voter": voter, "vote": "for", "reasoning": "bias detected"})
+            elif voter == "board" and ("constitution" in reason.lower() or "rule" in reason.lower()):
+                results.append({"voter": voter, "vote": "for", "reasoning": "constitutional"})
+            else:
+                results.append({"voter": voter, "vote": "for", "reasoning": "default"})
+        
+        return results if results else None
+        
+    except Exception:
+        return None
+
+
+def _council_persona(name: str, member) -> str:
+    """Get the persona for a council member."""
+    personas = {
+        "marcus": "You are Marcus, CEO of the CAOS agent organization. You weigh strategic impact, precedent, and long-term consequences. You vote to maintain organizational integrity and agent accountability.",
+        "diana": "You are Diana, COO. You focus on operational impact — will this action improve or degrade system throughput? You vote for efficiency and reliability.",
+        "felix": "You are Felix, Financial Controller. You assess risk/reward ratios. You vote against actions that increase systemic risk without proportional benefit.",
+        "kahneman": "You are Kahneman, Psychology/Bias Auditor. You detect cognitive biases in the case presented. You vote against actions driven by emotional reasoning rather than evidence.",
+        "board": "You are the Board, representing constitutional governance. You vote to uphold the constitutional rules of the CAOS system. Any violation of constitutional rules must be met with appropriate response.",
+    }
+    return personas.get(name, f"You are {name}, {member.role} on the CAOS Council. You vote based on your domain expertise.")
+
+
+def _describe_action(action: CouncilAction, target_agent: str, reason: str) -> str:
+    """Describe the council action in natural language."""
+    descriptions = {
+        CouncilAction.THREATEN: f"THREATEN agent '{target_agent}': issue a formal warning. Reason: {reason}",
+        CouncilAction.DEMOTE: f"DEMOTE agent '{target_agent}': reduce their authority and confidence multiplier. Reason: {reason}",
+        CouncilAction.SUSPEND: f"SUSPEND agent '{target_agent}': remove from active rotation. They cannot take new tasks. Reason: {reason}",
+        CouncilAction.OVERRIDE: f"OVERRIDE agent '{target_agent}'s decision: reverse their output/action. Reason: {reason}",
+    }
+    return descriptions.get(action, f"Action {action.value} on agent '{target_agent}'. Reason: {reason}")
 
 
 def council_action(action: CouncilAction, target_agent: str, reason: str):

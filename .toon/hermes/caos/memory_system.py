@@ -94,9 +94,9 @@ class AgentMemoryManager:
     def _init_sqlite(self):
         """Initialize SQLite FTS5 memory store."""
         try:
-            from memory_store import MemoryDB
+            from memory_store import LongTermMemoryStore
             db_path = str(self.memory_dir / "caos_memory.db")
-            self._sqlite_store = MemoryDB(db_path)
+            self._sqlite_store = LongTermMemoryStore(db_path)
         except Exception:
             self._sqlite_store = None
     
@@ -465,15 +465,21 @@ class AgentMemoryManager:
         # Use SQLite if available
         if self._sqlite_store:
             try:
-                self._sqlite_store.add(
+                from memory_store import MemoryRecord
+                record = MemoryRecord(
+                    id=memory.id,
                     agent=agent,
                     memory_type=memory.type.value,
                     content=memory.content,
                     context_hash=memory.context_hash,
                     session_id=memory.session_id,
+                    task="",
                     tags=memory.tags,
                     confidence=memory.confidence,
+                    timestamp=memory.timestamp,
+                    toon_compressed=memory.toon_compressed,
                 )
+                self._sqlite_store.store(record)
                 return
             except Exception:
                 pass
