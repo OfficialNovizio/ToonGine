@@ -992,7 +992,132 @@ Agents receive 29 tokens of context instead of 4.5MB of raw data.
 
 ---
 
-## 13. References (Updated)
+## 13. Memory Architecture — Agents That Learn
+
+> "Agents build memory, update TOON files after every task, inject mistakes into graphs, and never get lost in long conversations."
+
+### 13.1 Memory Types (Human-Brain Inspired)
+
+| Type | What | Where | When Updated |
+|---|---|---|---|
+| **Episodic** | "What happened" — task logs, outcomes | `.toon/memory/{agent}/ep-*.json` | After every task |
+| **Semantic** | "What I know" — facts, learnings | `.toon/memory/{agent}/sem-*.json` | After discoveries |
+| **Procedural** | "How to do" — patterns that worked | `.toon/memory/{agent}/proc-*.json` | After success |
+| **Mistake** | "What NOT to do" — errors, dead ends | `.toon/mistakes/{agent}-*.json` | After failure |
+| **Working** | "Right now" — current state | `.toon/state/{agent}_state.json` | Continuously |
+
+### 13.2 The Flow
+
+```
+SESSION START
+    │
+    ▼
+┌─────────────────────────────────────────┐
+│ inject_session_context(agent, task)      │
+│                                          │
+│ Loads:                                   │
+│  - Top 5 relevant episodic memories     │
+│  - Top 3 mistakes (DO NOT REPEAT)       │
+│  - Top 3 procedural patterns            │
+│  - Semantic facts about task domain     │
+│  - Last session state vector            │
+│  - Strike status + confidence multiplier│
+│                                          │
+│ All TOON-compressed → 29 tokens         │
+└──────────────┬──────────────────────────┘
+               │
+               ▼
+         TASK EXECUTES
+               │
+               ▼
+┌─────────────────────────────────────────┐
+│ update_after_task(agent, task, result)   │
+│                                          │
+│ Writes:                                  │
+│  1. Episodic memory (what happened)     │
+│  2. Procedural memory (if success)      │
+│  3. Semantic facts (learnings extracted)│
+│  4. Mistake node (if failed)            │
+│  5. Updated state vector                │
+│  6. Mistake → graph node (queryable)    │
+│  7. Prevention rule generated           │
+└──────────────┬──────────────────────────┘
+               │
+               ▼
+         SESSION ENDS
+               │
+               ▼
+┌─────────────────────────────────────────┐
+│ update_after_session(agent, summary)     │
+│                                          │
+│ Actions:                                 │
+│  - Save session summary                 │
+│  - Update agent's MEMORY.md             │
+│  - Consolidate last 100 memories        │
+│  - TOON archive older memories          │
+│  - Write new state vector               │
+│  - Update memory.toon for injection     │
+└─────────────────────────────────────────┘
+```
+
+### 13.3 Mistake Graph — Cross-Agent Learning
+
+Mistakes become **queryable nodes** in the knowledge graph:
+
+```
+Mistake Node = {
+    id: "mistake-dev-auth-csrf",
+    agent: "dev",
+    type: "security_gap",
+    context: "auth middleware",
+    context_hash: "a3f8...",
+    resolution: "Added CSRF token validation to all POST routes",
+    severity: 4,
+    repeat_count: 3,
+    prevention_rule: "IF working on auth THEN run security audit BEFORE commit"
+}
+```
+
+When **any agent** works on a similar task:
+1. Query mistake graph: "mistakes in auth context"
+2. Returns: 3 past mistakes, their resolutions, prevention rules
+3. Injected into agent context: "DO NOT REPEAT: Missing CSRF validation (dev, ×3)"
+4. Prevention rule triggers: "IF auth THEN security audit first"
+
+### 13.4 Session Injection — Never Get Lost
+
+At session start, every agent receives:
+
+```yaml
+Session Context (TOON compressed, ~29 tokens):
+  mistakes: [CSRF gap ×3, type error ×2]
+  procedures: [test-first pattern, atomic commits]
+  facts: [auth uses JWT, DB is Postgres]
+  state: {tasks: 47, multiplier: 0.8}
+  recent: [session-42: built login, session-43: fixed rate limit]
+```
+
+This means even after 100+ messages, the agent remembers:
+- What it did before (episodic)
+- What it learned (semantic)  
+- What patterns work (procedural)
+- What NOT to do (mistake graph)
+- Its current state (working memory)
+
+### 13.5 TOON Compression — Memory at Scale
+
+| Memory Type | Without TOON | With TOON | Storage |
+|---|---|---|---|
+| 100 episodic memories | ~50KB | ~2KB | 96% saved |
+| 50 semantic facts | ~10KB | ~500B | 95% saved |
+| 30 mistakes | ~15KB | ~800B | 95% saved |
+| Session injection | ~5KB | ~300B | 94% saved |
+
+All stored in `.toon/memory/` — git-versioned, portable, Hermes-compatible.
+
+---
+
+## 14. References (Updated)
 
 - **Global Workspace Theory** — Baars (1988), Dehaene (2014)
 - **Predictive Processing** — Clark (2013), Friston (2010)
