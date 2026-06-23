@@ -1117,7 +1117,48 @@ All stored in `.toon/memory/` — git-versioned, portable, Hermes-compatible.
 
 ---
 
-## 14. References (Updated)
+## 14. Discipline Gate — Agents Cannot Speak Unless They Know
+
+> "Without proper verification, data gathering from internet, building logic to make sense — they don't say anything."
+
+### The 6 Gates
+
+Every agent output MUST pass ALL applicable gates:
+
+| Gate | What It Checks | If Failed |
+|---|---|---|
+| **DATA** | Evidence from tools/graph/internet | "I need to gather more data on X" |
+| **LOGIC** | Reasoning chain exists (because/therefore/since) | "Let me show my reasoning first" |
+| **VERIFICATION** | Quinn checked (code compiles, tests pass) | "This needs Quinn verification" |
+| **SELF-COUNTER** | Agent attacked own output, resolved flaws | "I found flaws in my own thinking" |
+| **CONFIDENCE** | Confidence > 0.75 (or > 0.60 with evidence) | "I'm not confident enough to assert this" |
+| **COUNCIL** | High-stakes topics require 3/5 vote | "This needs Council approval" |
+
+### What Happens When a Gate Fails
+
+Agent DOES NOT output the original text. Instead:
+- `NEEDS_DATA`: "I cannot answer this yet. I need: [specific missing evidence]"
+- `BLOCKED`: "I cannot deliver. Failed gates: [which gates and why]"
+- `LOW_CONFIDENCE`: "I'm not confident enough to assert this. Let me gather more."
+
+### High-Stakes Topics (Always Require Council)
+
+Deploy, production, security, authentication, authorization, encryption, secrets, tokens, passwords, database migration, data deletion, user data, payment, billing, compliance.
+
+### Counter System Status
+
+| Counter | Status |
+|---|---|
+| Self-Counter (agent attacks own output) | ✅ Active |
+| Counter-User (agent challenges user) | ✅ Active |
+| Cross-Dept Challenge (depts audit each other) | ✅ Active |
+| Council (threaten/demote/suspend/override) | ✅ Active |
+| Discipline Gate (can't speak without knowing) | ✅ Active |
+| Belief Killing (abandon dead ends) | ✅ Active |
+
+---
+
+## 15. References (Updated)
 
 - **Global Workspace Theory** — Baars (1988), Dehaene (2014)
 - **Predictive Processing** — Clark (2013), Friston (2010)
