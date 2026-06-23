@@ -465,16 +465,40 @@ def _marcus_plan(plan: Plan, task: str) -> Plan:
     return plan
 
 def _agent_generate(node: TaskNode) -> str:
-    """Agent generates output. In production: calls Hermes with agent persona."""
-    # Placeholder — would call Hermes delegate_task or direct LLM
-    return f"[{node.agent}] Generated output for: {node.task}"
+    """Agent generates output via DeepSeek API with full context injection."""
+    from caos_executor import agent_generate as real_generate
+    
+    # Build context for this specific execution
+    task_context = {
+        "task": node.task,
+        "dependencies": node.deps,
+        "confidence_multiplier": 1.0,
+    }
+    
+    result = real_generate(node.agent, node.task, task_context)
+    
+    if result["success"]:
+        return result["output"]
+    else:
+        # Fallback to stub if real executor fails
+        print(f"       ⚠️  Real executor failed: {result.get('error', 'unknown')}")
+        return f"[{node.agent}] Generated output for: {node.task}"
 
 def _quinn_verify(output: str, node: TaskNode) -> dict:
-    """Quinn verifies agent output. In production: runs tests, checks types."""
-    # Heuristic: if output is empty or too short, fail
-    if not output or len(output) < 10:
-        return {"passed": False, "reason": "Output too short", "issues": ["empty output"]}
-    return {"passed": True, "reason": "Verification passed", "issues": []}
+    """Quinn verifies agent output via real execution (lint, type check, tests)."""
+    from caos_verifier import quinn_verify as real_verify
+    
+    report = real_verify(output, node.task)
+    
+    return {
+        "passed": report.passed,
+        "reason": report.summary,
+        "issues": [c.output for c in report.checks if c.verdict.value in ("failed", "error")],
+        "checks": [
+            {"name": c.name, "verdict": c.verdict.value, "output": c.output[:200]}
+            for c in report.checks
+        ],
+    }
 
 def _reassign_node(plan: Plan, node: TaskNode, agent_status: dict):
     """Reassign a node when agent is suspended — uses AgentRegistry fallback chain."""

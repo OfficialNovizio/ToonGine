@@ -87,36 +87,47 @@ class AgentMemoryManager:
         for d in [self.memory_dir, self.mistakes_dir, self.state_dir]:
             d.mkdir(parents=True, exist_ok=True)
         
-        # Per-agent memory stores (loaded on demand)
-        self._memory_cache: dict[str, dict] = {}
+        # Use SQLite FTS5 store (memory_store.py) instead of JSON files
+        self._sqlite_store = None
+        self._init_sqlite()
+    
+    def _init_sqlite(self):
+        """Initialize SQLite FTS5 memory store."""
+        try:
+            from memory_store import MemoryDB
+            db_path = str(self.memory_dir / "caos_memory.db")
+            self._sqlite_store = MemoryDB(db_path)
+        except Exception:
+            self._sqlite_store = None
     
     # ── SESSION START: Inject Memories ──────────────────────────
     
     def inject_session_context(self, agent: str, task: str, 
                                 task_context: str) -> dict:
-        """
-        Called at session start. Injects all relevant memories into agent context.
-        Returns a dict that becomes part of the agent's system prompt.
-        
-        What gets injected:
-        - Top 5 relevant episodic memories (similar past tasks)
-        - Top 3 mistakes (what NOT to repeat)
-        - Top 3 procedural memories (patterns that worked)
-        - Semantic facts about the project
-        - Last session's state vector
-        - Strike status + confidence multiplier
-        """
+        """Called at session start. Uses SQLite FTS5 for fast retrieval."""
         
         context_hash = hashlib.sha256(task_context.encode()).hexdigest()[:16]
+        
+        # Use SQLite if available (fast FTS5 search), fall back to JSON
+        if self._sqlite_store:
+            memories = self._sqlite_load_relevant(agent, task, task_context)
+            mistakes = self._sqlite_load_mistakes(agent, task_context)
+            procedures = self._sqlite_load_type(agent, "procedural", task)
+            semantic = self._sqlite_load_type(agent, "semantic", task)
+        else:
+            memories = self._load_relevant_memories(agent, task, task_context)
+            mistakes = self._load_relevant_mistakes(agent, task_context)
+            procedures = self._load_procedural_memories(agent, task)
+            semantic = self._load_semantic_facts(agent, task)
         
         injection = {
             "agent": agent,
             "session_start": time.time(),
             "context_hash": context_hash,
-            "memories": self._load_relevant_memories(agent, task, task_context),
-            "mistakes": self._load_relevant_mistakes(agent, task_context),
-            "procedures": self._load_procedural_memories(agent, task),
-            "semantic_facts": self._load_semantic_facts(agent, task),
+            "memories": memories,
+            "mistakes": mistakes,
+            "procedures": procedures,
+            "semantic_facts": semantic,
             "last_state": self._load_last_state(agent),
             "strike_status": self._get_strike_status(agent),
             "confidence_multiplier": self._get_confidence_multiplier(agent),
@@ -127,6 +138,36 @@ class AgentMemoryManager:
         injection["toon_injected"] = self._toon_compress_injection(injection)
         
         return injection
+    
+    def _sqlite_load_relevant(self, agent: str, task: str, context: str, limit: int = 5):
+        """Load relevant memories from SQLite FTS5."""
+        try:
+            results = self._sqlite_store.search(agent=agent, query=task[:200], limit=limit, 
+                                                  memory_type="episodic")
+            return [{"content": r.content, "tags": r.tags, "timestamp": r.timestamp} 
+                    for r in results]
+        except Exception:
+            return self._load_relevant_memories(agent, task, context, limit)
+    
+    def _sqlite_load_mistakes(self, agent: str, context: str, limit: int = 3):
+        """Load mistakes from SQLite FTS5."""
+        try:
+            results = self._sqlite_store.search(agent=agent, query=context[:200], limit=limit,
+                                                  memory_type="mistake")
+            return [{"content": r.content, "tags": r.tags, "timestamp": r.timestamp} 
+                    for r in results]
+        except Exception:
+            return self._load_relevant_mistakes(agent, context, limit)
+    
+    def _sqlite_load_type(self, agent: str, mem_type: str, task: str, limit: int = 3):
+        """Load memories of a specific type from SQLite."""
+        try:
+            results = self._sqlite_store.search(agent=agent, query=task[:200], limit=limit,
+                                                  memory_type=mem_type)
+            return [{"content": r.content, "tags": r.tags, "timestamp": r.timestamp} 
+                    for r in results]
+        except Exception:
+            return []
     
     def _load_relevant_memories(self, agent: str, task: str, 
                                  context: str, limit: int = 5) -> list[dict]:
@@ -417,14 +458,30 @@ class AgentMemoryManager:
     # ── MEMORY PERSISTENCE ─────────────────────────────────────
     
     def _add_memory(self, agent: str, memory: Memory):
-        """Add a memory and persist to disk."""
-        agent_dir = self.memory_dir / agent
-        agent_dir.mkdir(parents=True, exist_ok=True)
-        
+        """Add a memory — prefers SQLite FTS5, falls back to JSON."""
         # TOON compress
         memory.toon_compressed = self._toon_compress(memory)
         
-        # Save
+        # Use SQLite if available
+        if self._sqlite_store:
+            try:
+                self._sqlite_store.add(
+                    agent=agent,
+                    memory_type=memory.type.value,
+                    content=memory.content,
+                    context_hash=memory.context_hash,
+                    session_id=memory.session_id,
+                    tags=memory.tags,
+                    confidence=memory.confidence,
+                )
+                return
+            except Exception:
+                pass
+        
+        # Fallback: JSON file storage
+        agent_dir = self.memory_dir / agent
+        agent_dir.mkdir(parents=True, exist_ok=True)
+        
         mem_file = agent_dir / f"{memory.id}.json"
         with open(mem_file, 'w') as f:
             json.dump({
