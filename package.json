@@ -1,6 +1,6 @@
 {
   "name": "toongine",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "TOON V4 — graph intelligence bridge for AI agents. 99.97% compression, 24 agents, 3-tool unified graph, 5 MCP tools.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

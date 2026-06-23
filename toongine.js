@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// toongine CLI — ToonGine v1.6.0
+// toongine CLI — ToonGine v1.7.1
 // One command: npx toongine init — builds everything
 
 const fs = require('fs')
@@ -379,7 +379,7 @@ Project structure (after init):
 
 function init() {
   const cwd = process.cwd()
-  console.log('\n  🚀 ToonGine v1.6.0 — Activating...\n')
+  console.log('\n  🚀 ToonGine v1.7.1 — Activating...\n')
 
   // ─── Detect features ─────────────────────────────────────────────────────
   const features = {
@@ -1331,7 +1331,7 @@ function integrate() {
   console.log('')
 }
 
-function version() { console.log('ToonGine v1.6.0') }
+function version() { console.log('ToonGine v1.7.1') }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 

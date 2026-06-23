@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# yvon-absorb — Safe migration: originals → .toon/ (with rollback)
+# Usage: bash tools/yvon-absorb [--dry-run]
+
+set -euo pipefail
+ROOT="${1:-.}"
+DRY="${2:-}"
+
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
+ARCHIVE_DIR="$ROOT/.toon/.archive/$(date +%Y-%m-%d_%H%M%S)"
+MANIFEST="$ARCHIVE_DIR/manifest.json"
+
+echo ""
+echo "  📦 YVON Absorber — Safe Migration"
+echo "  $(date '+%Y-%m-%d %H:%M')"
+echo ""
+
+# ── What gets absorbed ──────────────────────────────────────────────────
+ABSORB_TARGETS=(
+  "agent-department:.toon/memory"
+  "agent-memory:.toon/memory"
+  "docs:.toon/docs"
+  "graphify-out:.toon/graphs"
+  "CLAUDE.md:.toon/project/CLAUDE.md"
+)
+
+MOVED=()
+SKIPPED=()
+MANIFEST_ENTRIES="["
+
+for target in "${ABSORB_TARGETS[@]}"; do
+  IFS=':' read -r SRC DST <<< "$target"
+  SRC_PATH="$ROOT/$SRC"
+  DST_PATH="$ROOT/$DST"
+
+  if [ ! -e "$SRC_PATH" ]; then
+    SKIPPED+=("$SRC (not found)")
+    continue
+  fi
+
+  SIZE_BEFORE=$(du -sh "$SRC_PATH" 2>/dev/null | cut -f1 || echo "?")
+
+  if [ "$DRY" = "--dry-run" ]; then
+    echo -e "  ${YELLOW}[DRY]${NC} $SRC → $DST ($SIZE_BEFORE)"
+    MOVED+=("$SRC→$DST")
+    continue
+  fi
+
+  # ── Compress + move ───────────────────────────────────────────────────
+  mkdir -p "$ARCHIVE_DIR/$(dirname "$SRC")" 2>/dev/null || true
+
+  if [ -d "$SRC_PATH" ]; then
+    # Directory: compress to .toon format, move original
+    cp -a "$SRC_PATH" "$ARCHIVE_DIR/$SRC"
+    # Convert to TOON (strip markdown, compress)
+    node -e "
+      const fs=require('fs'),path=require('path');
+      function walk(dir,cb){for(const e of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,e.name);e.isDirectory()?walk(p,cb):cb(p)}}
+      function toToon(f){
+        const c=fs.readFileSync(f,'utf-8');
+        const stripped=c.replace(/#{1,6}\s+/g,'§').replace(/\*\*/g,'').replace(/\|/g,' ').replace(/\n{3,}/g,'\n\n');
+        const out=path.join('$DST_PATH',path.relative('$SRC_PATH',f).replace(/\.md$/,'.toon'));
+        fs.mkdirSync(path.dirname(out),{recursive:true});
+        fs.writeFileSync(out,'#TOON src='+f+'\n'+stripped.slice(0,20000));
+      }
+      if(fs.existsSync('$SRC_PATH')) walk('$SRC_PATH',toToon);
+    " 2>/dev/null || true
+    rm -rf "$SRC_PATH"
+  else
+    # Single file
+    cp "$SRC_PATH" "$ARCHIVE_DIR/$SRC"
+    node -e "
+      const fs=require('fs');
+      const c=fs.readFileSync('$SRC_PATH','utf-8');
+      const stripped=c.replace(/#{1,6}\s+/g,'§').replace(/\*\*/g,'').replace(/\n{3,}/g,'\n\n');
+      fs.mkdirSync(require('path').dirname('$DST_PATH'),{recursive:true});
+      fs.writeFileSync('$DST_PATH','#TOON src=$SRC\n'+stripped.slice(0,50000));
+    " 2>/dev/null || true
+    rm "$SRC_PATH"
+  fi
+
+  echo -e "  ${GREEN}✅${NC} $SRC → $DST ($SIZE_BEFORE → compressed)"
+  MOVED+=("$SRC→$DST")
+  MANIFEST_ENTRIES+="{\"src\":\"$SRC\",\"dst\":\"$DST\",\"archived\":\"$ARCHIVE_DIR/$SRC\"},"
+done
+
+MANIFEST_ENTRIES="${MANIFEST_ENTRIES%,}]"
+
+# ── Write manifest ──────────────────────────────────────────────────────
+if [ "$DRY" != "--dry-run" ] && [ ${#MOVED[@]} -gt 0 ]; then
+  echo "$MANIFEST_ENTRIES" > "$MANIFEST"
+  echo "  {\"date\":\"$(date -Iseconds)\",\"entries\":$MANIFEST_ENTRIES}" > "$MANIFEST"
+  echo ""
+  echo -e "  ${GREEN}✅ ${#MOVED[@]} items migrated${NC}"
+  echo "  Archive: $ARCHIVE_DIR"
+  echo "  Rollback: bash tools/yvon-rollback $ARCHIVE_DIR"
+else
+  echo ""
+  echo -e "  ${YELLOW}🔍 Dry run — ${#MOVED[@]} items would be moved${NC}"
+  echo "  Run without --dry-run to apply"
+fi
+echo ""

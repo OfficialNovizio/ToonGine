@@ -80,7 +80,7 @@ def synthesize(project_root):
     db.close()
 
     toon_path = os.path.join(project_root, '.toon', 'code-review-graph', 'CODEGRAPH_REPORT.toon')
-    with open(toon_path, 'w') as f:
+    with open(toon_path, 'w', encoding='utf-8') as f:
         f.write(output)
     
     print(f"  ✅ Synthesized {len(nodes)} nodes → .toon/code-review-graph/CODEGRAPH_REPORT.toon")

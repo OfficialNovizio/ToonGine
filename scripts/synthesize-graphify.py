@@ -86,7 +86,7 @@ def synthesize(project_root):
     output = '\n'.join(lines)
     
     toon_path = os.path.join(project_root, '.toon', 'graphify', 'GRAPH_REPORT.toon')
-    with open(toon_path, 'w') as f:
+    with open(toon_path, 'w', encoding='utf-8') as f:
         f.write(output)
     
     print(f"  ✅ Synthesized {len(nodes)} nodes → .toon/graphify/GRAPH_REPORT.toon")

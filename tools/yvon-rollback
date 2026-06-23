@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# yvon-rollback — Restore from .toon/.archive/<timestamp>/
+# Usage: bash tools/yvon-rollback [archive-timestamp] [--dry-run]
+
+set -euo pipefail
+ROOT="${1:-.}"
+TIMESTAMP="${2:-}"
+DRY="${3:-}"
+
+GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
+ARCHIVE_DIR="$ROOT/.toon/.archive"
+
+echo ""
+echo "  ⏪ YVON Rollback"
+echo ""
+
+if [ ! -d "$ARCHIVE_DIR" ]; then
+  echo -e "  ${RED}❌ No archive found at $ARCHIVE_DIR${NC}"
+  exit 1
+fi
+
+# List available snapshots if no timestamp given
+if [ -z "$TIMESTAMP" ]; then
+  echo "  Available rollback points:"
+  for d in "$ARCHIVE_DIR"/*/; do
+    [ -d "$d" ] || continue
+    name=$(basename "$d")
+    manifest="$d/manifest.json"
+    count=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('$manifest','utf-8')).entries.length)}catch(e){console.log('?')}" 2>/dev/null || echo "?")
+    echo "    $name  ($count items)"
+  done
+  echo ""
+  echo "  Usage: bash tools/yvon-rollback <timestamp>"
+  exit 0
+fi
+
+SNAPSHOT="$ARCHIVE_DIR/$TIMESTAMP"
+if [ ! -d "$SNAPSHOT" ]; then
+  echo -e "  ${RED}❌ Snapshot $TIMESTAMP not found${NC}"
+  exit 1
+fi
+
+MANIFEST="$SNAPSHOT/manifest.json"
+if [ ! -f "$MANIFEST" ]; then
+  echo -e "  ${RED}❌ No manifest in $TIMESTAMP${NC}"
+  exit 1
+fi
+
+echo "  Rolling back to: $TIMESTAMP"
+echo ""
+
+# Restore each entry
+ENTRIES=$(node -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('$MANIFEST','utf-8')).entries))" 2>/dev/null || echo "[]")
+COUNT=$(node -e "console.log(JSON.parse('$ENTRIES').length)" 2>/dev/null || echo "0")
+
+for i in $(seq 0 $((COUNT - 1))); do
+  SRC=$(node -e "console.log(JSON.parse('$ENTRIES')[$i].src)" 2>/dev/null || echo "")
+  ARCHIVED=$(node -e "console.log(JSON.parse('$ENTRIES')[$i].archived)" 2>/dev/null || echo "")
+  
+  if [ -z "$SRC" ] || [ -z "$ARCHIVED" ]; then continue; fi
+
+  SRC_PATH="$ROOT/$SRC"
+  ARCHIVED_PATH="$SNAPSHOT/$SRC"
+
+  if [ ! -e "$ARCHIVED_PATH" ]; then
+    echo -e "  ${YELLOW}⚠️  $SRC — archived copy missing, skipping${NC}"
+    continue
+  fi
+
+  if [ "$DRY" = "--dry-run" ]; then
+    echo -e "  ${YELLOW}[DRY]${NC} restore: $SRC"
+    continue
+  fi
+
+  # Remove .toon version, restore original
+  rm -rf "$SRC_PATH" 2>/dev/null || true
+  cp -a "$ARCHIVED_PATH" "$SRC_PATH"
+  echo -e "  ${GREEN}✅${NC} $SRC restored"
+done
+
+if [ "$DRY" = "--dry-run" ]; then
+  echo ""
+  echo "  🔍 Dry run complete — run without --dry-run to restore"
+else
+  echo ""
+  echo -e "  ${GREEN}✅ Rollback complete — $COUNT items restored from $TIMESTAMP${NC}"
+  echo "  Run: npm run build   (verify)"
+fi
+echo ""

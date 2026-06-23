@@ -51,9 +51,10 @@ def wire(project_root: str) -> bool:
     mcp = config['mcpServers']
 
     # Add toongine MCP server with absolute path
+    py_cmd = 'python' if sys.platform == 'win32' else 'python3'
     mcp['toongine'] = {
         'type': 'stdio',
-        'command': 'python3',
+        'command': py_cmd,
         'args': [mcp_server_path, project_root],
     }
 
@@ -73,7 +74,7 @@ def wire(project_root: str) -> bool:
     config['permissions']['allow'] = sorted(existing_perms)
 
     # Write back, preserving existing formatting
-    with open(CONFIG_PATH, 'w') as f:
+    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
     print(f'  ✅ ToonGine MCP auto-wired → ~/.hermes/config.yaml')
