@@ -1,5 +1,5 @@
 {
-  "version": "1.5.4",
+  "version": "5.0.0",
   "projectRoot": "/root/yvon-engine",
   "graphifyReport": "/root/yvon-engine/.toon/graphify/GRAPH_REPORT.md",
   "codegraphReport": "/root/yvon-engine/.toon/codegraph/CODEGRAPH_REPORT.md",
@@ -13,7 +13,7 @@
   "toonEnabled": true,
   "toonBidirectional": true,
   "hermesSync": true,
-  "claudeAvailable": false,
+  "claudeAvailable": true,
   "agents": 24,
   "builtIn": [
     "graphify",

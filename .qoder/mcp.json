@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "code-review-graph": {
+      "command": "/usr/local/lib/hermes-agent/venv/bin/python",
+      "args": [
+        "-m",
+        "code_review_graph",
+        "serve"
+      ],
+      "cwd": "/root/yvon-engine",
+      "type": "stdio"
+    }
+  }
+}

@@ -767,6 +767,69 @@ function init() {
     }
   }
 
+  // ─── Phase 7: Autoresearch (Karpathy — 4th tool) → .toon/autoresearch/ ────
+  console.log('\\n  ─── Autoresearch ───')
+  const arDir = path.join(cwd, '.toon', 'autoresearch')
+  fs.mkdirSync(arDir, { recursive: true })
+  
+  // Copy autoresearch files
+  const arFiles = ['prepare.py', 'train.py', 'program.md', 'pyproject.toml']
+  for (const f of arFiles) {
+    const src = path.join(__dirname, 'scripts', f)
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(arDir, f))
+    }
+  }
+  console.log('  ✅ Autoresearch files → .toon/autoresearch/')
+  
+  // Install uv and run setup
+  try {
+    const uvExists = require('child_process').execSync('which uv 2>/dev/null || echo ""', { encoding: 'utf-8', timeout: 5000 }).trim()
+    if (!uvExists) {
+      console.log('  📦 Installing uv package manager...')
+      try {
+        require('child_process').execSync('curl -LsSf https://astral.sh/uv/install.sh | sh', { timeout: 60000 })
+        console.log('  ✅ uv installed')
+      } catch (e) {
+        console.log(`  ⚠️  uv install failed — run manually: curl -LsSf https://astral.sh/uv/install.sh | sh`)
+      }
+    }
+    
+    const uvPath = uvExists || path.join(os.homedir(), '.local', 'bin', 'uv')
+    if (fs.existsSync(uvPath)) {
+      console.log('  📦 Running uv sync...')
+      require('child_process').execSync(`${uvPath} sync`, { cwd: arDir, timeout: 120000 })
+      console.log('  ✅ uv sync complete')
+      
+      console.log('  📥 Downloading training data + tokenizer...')
+      require('child_process').execSync(`${uvPath} run prepare.py`, { cwd: arDir, timeout: 300000 })
+      console.log('  ✅ Data + tokenizer ready')
+    }
+  } catch (e) {
+    console.log(`  ⚠️  Autoresearch setup: ${e.message.trim().split('\\n')[0]}`)
+    console.log('     Run manually: cd .toon/autoresearch && uv sync && uv run prepare.py')
+  }
+  
+  // Synthesize TOON report
+  try {
+    const synthAr = path.join(__dirname, 'scripts', 'synthesize-autoresearch.py')
+    if (fs.existsSync(synthAr)) {
+      require('child_process').execSync(`${PYTHON} ${synthAr} ${cwd}`, { timeout: 60000 })
+    }
+  } catch (e) {
+    console.log(`  ⚠️  synthesize-autoresearch: ${e.message.trim().split('\\n')[0]}`)
+  }
+  
+  // Register MCP server
+  const arMcpPath = path.join(__dirname, 'scripts', 'autoresearch-mcp.py')
+  if (fs.existsSync(arMcpPath)) {
+    try {
+      const mcpDest = path.join(cwd, '.toon', 'hermes', 'autoresearch-mcp.py')
+      fs.copyFileSync(arMcpPath, mcpDest)
+      console.log('  ✅ Autoresearch MCP wired')
+    } catch (e) {}
+  }
+
   // ─── Final Cleanup: move any remaining leaked dot-dirs into .toon/ ────
   const allLeakDirs = ['.claude', '.gemini', '.qoder', '.kiro', '.codegraph']
   const allLeakFiles = ['.mcp.json', '.opencode.json', 'AGENTS.md', 'GEMINI.md', 'QODER.md', '.cursorrules', '.windsurfrules']

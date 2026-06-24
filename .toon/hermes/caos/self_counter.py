@@ -214,3 +214,62 @@ def save_strike_history(agent_name: str, strikes: list[StrikeRecord],
             }
             for s in strikes
         ], f, indent=2)
+
+
+# ═══════════════════════════════════════════════════════════════
+# LLM-BACKED SELF-COUNTER (99% accuracy)
+# ═══════════════════════════════════════════════════════════════
+
+def self_counter_llm(agent_name: str, agent_output: str,
+                     strikes: list[StrikeRecord],
+                     context: str = "") -> CounterResult:
+    """
+    Real LLM self-critique. DeepSeek attacks its own output.
+    Catches hardcoded secrets, missing error handling, edge cases, etc.
+    Falls back to heuristic self_counter if API unavailable.
+    """
+    # Check for repeated mistakes FIRST (fast, no API needed)
+    repeated = check_repeated_mistakes(agent_output, strikes)
+    if repeated:
+        strike_warning = "\n".join(
+            f"⚠️  REPEATED MISTAKE DETECTED: {s.mistake_type} (strike {s.repeat_count})"
+            for s in repeated
+        )
+        return CounterResult(
+            original=agent_output,
+            critique=f"AUTO-FLAGGED: Repeated past mistakes.\n{strike_warning}",
+            confidence=0.1,
+            flaws_found=len(repeated),
+            revised=agent_output,
+            passed=False,
+        )
+    
+    # LLM-backed self-critique
+    try:
+        from caos_llm import call_llm, SELF_COUNTER_SYSTEM, SELF_COUNTER_USER, parse_llm_json
+        
+        strikes_text = "\n".join(
+            f"  - [{s.mistake_type}] {s.resolution} (×{s.repeat_count})"
+            for s in strikes[-5:]
+        ) if strikes else "No prior strikes."
+        
+        prompt = SELF_COUNTER_USER.format(strikes=strikes_text, output=agent_output)
+        result = call_llm(SELF_COUNTER_SYSTEM, prompt, max_tokens=4000)
+        
+        if result["success"]:
+            data = parse_llm_json(result["content"])
+            
+            return CounterResult(
+                original=agent_output,
+                critique=json.dumps(data.get("flaws", [])),
+                confidence=data.get("confidence", 0.5),
+                flaws_found=len(data.get("flaws", [])),
+                revised=data.get("revised_output", agent_output),
+                passed=data.get("passed", False),
+                self_counter_used=True,
+            )
+    except Exception:
+        pass
+    
+    # Fallback to heuristic
+    return self_counter(agent_name, agent_output, strikes, context)

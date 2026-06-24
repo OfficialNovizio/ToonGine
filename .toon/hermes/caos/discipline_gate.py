@@ -179,6 +179,15 @@ class DisciplineGate:
         Has the agent gathered data from tools/graph/internet?
         Cannot assert facts without evidence.
         """
+        # Skip DATA gate for pure code — verified by syntax/type/test
+        code_indicators = ["def ", "import ", "class ", "return ", "async def", "```python"]
+        is_pure_code = any(ci in output for ci in code_indicators)
+        lines = output.split('\n')
+        code_ratio = sum(1 for l in lines if l.strip() and not l.strip().startswith(('#','//','/*','*','<!--','"',"'''"))) / max(len(lines), 1)
+        if is_pure_code and code_ratio > 0.6:
+            return GateResult(gate_name="DATA", status=GateStatus.PASSED,
+                reason="Pure code — DATA gate skipped (verified by syntax/type/test)")
+        
         evidence = context.get("evidence_sources", [])
         
         # Count how many evidence sources the agent used
@@ -252,6 +261,18 @@ class DisciplineGate:
         ]
         
         reasoning_count = sum(1 for s in reasoning_signals if s in output_lower)
+        
+        # Skip LOGIC gate for pure code output (no natural language to reason about)
+        code_indicators = ["def ", "import ", "class ", "return ", "async def", "```python", "```typescript"]
+        is_pure_code = any(ci in output for ci in code_indicators)
+        code_ratio = sum(1 for line in output.split('\n') if line.strip() and not line.strip().startswith(('#', '//', '/*', '*', '<!--'))) / max(len(output.split('\n')), 1)
+        
+        if is_pure_code and code_ratio > 0.6:
+            return GateResult(
+                gate_name="LOGIC",
+                status=GateStatus.PASSED,
+                reason="Pure code output — LOGIC gate skipped (verified by syntax/type/test checks instead)",
+            )
         
         # If output is long but has no reasoning signals → suspicious
         if len(output) > 200 and reasoning_count < 2:

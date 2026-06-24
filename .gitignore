@@ -9,7 +9,6 @@ node_modules/
 !.toon/graphs/
 !.toon/codegraph/
 !.toon/graphify/
-!.toon/code-review-graph/
 
 # Generated — not part of the package
 toongine-1.5.5.tgz

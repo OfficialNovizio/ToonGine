@@ -26,6 +26,10 @@ TOONGINE_PERMS = [
     'mcp__toongine__toon_graph_impact',
     'mcp__toongine__toon_graph_search',
     'mcp__toongine__toon_graph_status',
+    'mcp__toongine__autoresearch_run',
+    'mcp__toongine__autoresearch_list',
+    'mcp__toongine__autoresearch_best',
+    'mcp__toongine__autoresearch_status',
 ]
 
 
@@ -57,6 +61,15 @@ def wire(project_root: str) -> bool:
         'command': py_cmd,
         'args': [mcp_server_path, project_root],
     }
+
+    # Add autoresearch MCP server
+    ar_mcp_path = os.path.join(project_root, '.toon', 'hermes', 'autoresearch-mcp.py')
+    if os.path.exists(ar_mcp_path):
+        mcp['autoresearch'] = {
+            'type': 'stdio',
+            'command': py_cmd,
+            'args': [ar_mcp_path],
+        }
 
     # Ensure permissions section exists
     if 'permissions' not in config:
