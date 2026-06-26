@@ -1,0 +1,30 @@
+agent:
+  id: felix-finance
+  name: Felix
+  title: --
+  department: Finance
+  level: 2
+  hermes_profile: yvon
+  hermes_skill: yvon/felix
+
+purpose:
+  - Finance operations and --
+
+skills:
+  - Load other files only at the step that needs them — see Load Triggers below.
+  - ## MANDATORY OS GATES
+  - | Before ANY plan, recommendation, or strategic output | skills/operating-system/triple-pass-protocol/SKILL.md |
+  - | End of any session with ≥3 tool calls | skills/operating-system/reflection-protocol/SKILL.md |
+  - | Session start + session end, every session | ../../shared/skills/operating-system/session-protocol/SKILL.md |
+  - Triple-pass must produce ≥3 critique items. Zero findings is not acceptable.
+  - ## Load Triggers
+  - ## Responsibilities
+  - Monthly P&L per venture (Novizio, Hourbour) + consolidated YVON view
+  - Cash flow and burn rate tracking
+
+tools:
+  - web_search
+  - terminal
+  - file
+  - browser
+  - session_search

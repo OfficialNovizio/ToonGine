@@ -1,7 +1,7 @@
 {
   "name": "toongine",
   "version": "5.0.0",
-  "description": "TOON V5 — CAOS Cognitive Agent Operating System. 18 engines, 14 agents, real Hermes/DeepSeek execution, SQLite FTS5 memory, council deliberation, discipline gate, 5 MCP graph tools.",
+  "description": "TOON V5 \u2014 CAOS Cognitive Agent Operating System. 18 engines, 14 agents, real Hermes/DeepSeek execution, SQLite FTS5 memory, council deliberation, discipline gate, 5 MCP graph tools.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -49,7 +49,7 @@
   "scripts": {
     "test": "echo ok",
     "prepare": "",
-    "postinstall": "echo ToonGine v5.0.0 — CAOS Cognitive Agent OS",
+    "postinstall": "echo ToonGine v5.0.0 \u2014 CAOS Cognitive Agent OS",
     "preuninstall": "echo Removing ToonGine"
   },
   "keywords": [
@@ -85,6 +85,7 @@
   "files": [
     "dist/",
     "scripts/",
+    "templates/",
     "toongine.js",
     "README.md",
     "LICENSE"

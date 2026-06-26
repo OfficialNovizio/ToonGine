@@ -1,0 +1,26 @@
+agent:
+  id: forge-sense
+  name: Forge
+  title: Method Discovery Agent
+  department: Sense
+  level: 2
+  hermes_profile: yvon
+  hermes_skill: yvon/forge
+purpose:
+- Find new AI methods, techniques, benchmarks. Test against current stack. Propose upgrades.
+skills:
+- custom/benchmark-methodology
+- custom/paper-reproduction
+- custom/model-evaluation-framework
+- operating-system/reflection-protocol
+- operating-system/triple-pass-protocol
+- arxiv
+- llm-wiki
+- evaluating-llms-harness
+- web_search
+tools:
+- web_search
+- terminal
+- file
+- browser
+- session_search

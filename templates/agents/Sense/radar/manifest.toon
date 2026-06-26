@@ -1,0 +1,24 @@
+agent:
+  id: radar-sense
+  name: Radar
+  title: Market Intelligence Agent
+  department: Sense
+  level: 2
+  hermes_profile: yvon
+  hermes_skill: yvon/radar
+purpose:
+- Monitor markets, competitors, industry trends. Alert on significant changes.
+skills:
+- custom/competitor-intelligence
+- custom/market-sizing
+- custom/trend-detection
+- operating-system/reflection-protocol
+- operating-system/triple-pass-protocol
+- polymarket
+- web_search
+tools:
+- web_search
+- terminal
+- file
+- browser
+- session_search

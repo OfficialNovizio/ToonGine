@@ -12,7 +12,6 @@ node_modules/
 
 # Generated — not part of the package
 toongine-1.5.5.tgz
-templates/
 src/
 cli/
 scripts/*.js.map
