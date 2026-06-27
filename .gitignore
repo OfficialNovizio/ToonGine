@@ -36,5 +36,5 @@ vercel.json
 .env.toongine
 env.example.toongine
 WORKFLOW.md
-SKILL.md
+/SKILL.md
 next.config.ts

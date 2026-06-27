@@ -1,10 +1,19 @@
 # Board — Session Log
 
-> Active tasks and recent completions. Permanent knowledge in MEMORY.md.
+> Active reviews and recent verdicts. Permanent knowledge in MEMORY.md.
 
-## Current Session
-- Session start: 2026-06-13T19:23:06.561Z
-- Status: Initialized
+## Current Review
+- Proposal: (empty)
+- Submitted by: (empty)
+- Amount/Scope: (empty)
+- Gates passed: (empty)
+- Verdict: pending
+
+## This Session
+- Reviews completed: 0
+- Approved: 0
+- Rejected: 0
+- Conditional: 0
 
 ## Last Clean Exit
 - None (new agent)
