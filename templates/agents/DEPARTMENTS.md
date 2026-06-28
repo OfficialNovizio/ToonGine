@@ -22,7 +22,7 @@ YVON orchestrates **24 agents across 10 departments**. Each agent owns a specifi
 
 | Agent | Role | Skills |
 |-------|------|--------|
-| **board** | Governance Agent | constitution-enforcement, fiduciary-guard, risk-assessment-matrix, decision-critic, postmortem-writing, pre-mortem, reflection-protocol, triple-pass-protocol |
+| **board** | Governance Agent | constitution-enforcement, fiduciary-guard, risk-assessment-matrix, strategic-veto, decision-critic, postmortem-writing, pre-mortem, reflection-protocol, triple-pass-protocol |
 
 ### Finance — Financial Intelligence
 

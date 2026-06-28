@@ -1,13 +1,9 @@
-# ToonGine v5 — CAOS Cognitive Agent Operating System
+# ToonGine — CAOS Cognitive Agent OS
 
-**18 engines · 14 agents · real DeepSeek/Hermes execution · SQLite FTS5 · 5 MCP graph tools · 99.97% TOON compression**
-
-## Quick Install
+One `npm install`. 25 AI agents. Full venture OS.
 
 ```bash
-npm install -g github:OfficialNovizio/ToonGine#master
-npx toongine init        # one command — everything
-npx toongine doctor       # health check — all systems
+npx toongine init    # Deploy agents, scaffold .toon/, build graphs
 ```
 
 ---
@@ -15,362 +11,179 @@ npx toongine doctor       # health check — all systems
 ## Architecture
 
 ```
-                         npx toongine init
-                              │
-    ┌─────────────────────────┼─────────────────────────┐
-    ▼                         ▼                         ▼
-┌──────────┐           ┌──────────────┐          ┌──────────┐
-│ 3 GRAPHS │           │  CAOS AGENTS │          │  HERMES  │
-│          │           │              │          │  BRIDGE  │
-│ codegraph│           │ agent_registry│         │ MCP tools│
-│ graphify │           │ 14 personas  │          │ auto-wire│
-│ cr-graph │           │ 4 council    │          │ config   │
-└────┬─────┘           └──────┬───────┘          └────┬─────┘
-     │                        │                      │
-     └────────────┬───────────┘                      │
-                  ▼                                  │
-         ┌────────────────┐                          │
-         │  unified.db    │◄─────────────────────────┘
-         │  FTS5 search   │
-         └───────┬────────┘
-                 │
-                 ▼
-    ┌────────────────────────────────────┐
-    │        CAOS PIPELINE               │
-    │                                    │
-    │  USER TASK: "build auth system"    │
-    │      │                             │
-    │      ├─ Marcus (AgenticCoordinator)│
-    │      │  → decompose + assign       │
-    │      ├─ Diana (scheduler)          │
-    │      │  → parallel rounds          │
-    │      ├─ Agent executes (DeepSeek)  │
-    │      │  + session injection        │
-    │      │  + graph query (MCP)        │
-    │      ├─ Self-Counter               │
-    │      ├─ Cross-Dept Challenge       │
-    │      ├─ Quinn (real verification)  │
-    │      │  syntax→lint→type→test→sec  │
-    │      ├─ Kahneman (reasoning audit) │
-    │      │  fallacies + biases + evid. │
-    │      ├─ Discipline Gate (6 gates)  │
-    │      ├─ Council (LLM deliberation) │
-    │      └─ Output → SQLite FTS5 mem   │
-    │           + Mistake→prevention rule│
-    └────────────────────────────────────┘
+npx toongine init
+       │
+       ▼
+┌──────────────────────────────────────────────────┐
+│                VPS (Hermes Agent)                 │
+│                                                   │
+│  POST :4201/register → creates project            │
+│  /root/.toon/projects/<name>/                     │
+│    ├── agents/         25 agents                  │
+│    ├── metrics.json    token burn, cost, sessions │
+│    ├── config.json     project config + memory    │
+│    └── graphs/         codegraph, graphify        │
+│                                                   │
+│  Pipeline (every 5 min):                          │
+│    state.db → metrics.json → GitHub .toon/        │
+│                                                   │
+│  API (:4201):                                     │
+│    /register  /projects  /metrics  /agents        │
+│    /health    /metrics/all                        │
+└──────────────────────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────────────────┐
+│              Vercel Dashboard (yvon.in)            │
+│                                                   │
+│  Agents tab → Token Burn / Health / Memory        │
+│  All data from VPS API — real metrics             │
+└──────────────────────────────────────────────────┘
 ```
 
 ---
 
-## What `npx toongine init` Does (7 Phases)
+## 25 Agents — 10 Departments
 
-### Phase 1 — Detect
-```
-Platform: Windows/Linux auto-detect (python/python3, where/which)
-Tools:    codegraph, graphify, code-review-graph — check if installed
-API keys: DEEPSEEK_API_KEY or ANTHROPIC_API_KEY
-Hermes:   ~/.hermes/memories/USER.md exists?
-```
+| Department | Agents | Role |
+|-----------|--------|------|
+| **CEO** | marcus | Direction + Orchestration |
+| **COO** | diana | Operations + Sprints |
+| **Command** | board | Governance + Constitutional Authority |
+| **Finance** | felix | Financial Intelligence |
+| **Legal** | comply, docs, guard | Compliance, Docs, Security |
+| **Marketing** | kai, lena, rio, nate, atlas, pixel, aria | Revenue + Content (7 agents) |
+| **Psychology** | kahneman | Behavioral Intelligence + Bias Audit |
+| **Research** | depth, synth, vette | Deep Research + Synthesis + Validation |
+| **Sense** | forge, radar, scout | Discovery + Market Intel + Feasibility |
+| **Technical** | dev, raj, mia, quinn | Architecture, Backend, Frontend, QA |
 
-### Phase 2 — Install Missing Tools
-```
-npm i -g @colbymchenry/codegraph       → import dependency mapper
-pip install graphifyy                     → semantic community detection
-pip install code-review-graph            → tree-sitter AST analyzer
-```
-Skips already-installed tools.
+---
 
-### Phase 3 — Build 3 Knowledge Graphs
-```
-codegraph init                          → .codegraph/codegraph.db
-  ├─ Imports resolved (TS/JS/Python)
-  ├─ Hub files (most-imported)
-  └─ Dependency graph
+## Agent File Structure
 
-graphify extract . --backend auto       → .toon/graphify/GRAPH_REPORT.md
-  ├─ LLM-powered semantic analysis
-  ├─ Community detection
-  └─ Cohesion scoring
-  (Falls back to built-in regex if no API key)
+Every agent carries:
 
-code-review-graph build                 → .toon/code-review-graph/graph.db
-  ├─ Tree-sitter AST parsing
-  ├─ Symbol extraction
-  ├─ Call graph construction
-  └─ Bug pattern detection
-```
+| File | Purpose |
+|------|---------|
+| `AGENT.md` | Identity — who, what, personality |
+| `MEMORY.md` | Learnings across sessions (fills during work) |
+| `SESSION.md` | Current task state (fills during active work) |
+| `SKILLS.md` | Load triggers — when to load what skill |
+| `TOOLS.md` | Available tools |
+| `manifest.toon` | Machine-readable spec |
+| `skills/` | Custom skills + Marketplace skills + OS protocols |
 
-### Phase 4 — Synthesize TOON Reports
-```
-synthesize-codegraph.py          → .toon/codegraph/CODEGRAPH_REPORT.toon
-synthesize-graphify.py           → .toon/graphify/GRAPH_REPORT.toon
-synthesize-code-review-graph.py  → .toon/code-review-graph/CODEGRAPH_REPORT.toon
-```
-Each builds abbreviation dictionaries. `authentication` → `§42`. 99.97% compression.
+---
 
-### Phase 5 — Deploy CAOS Agents
+## Governance Cycle (Board)
+
+Every strategic decision flows through 4 gates:
+
 ```
-AgentRegistry loaded from .toon/hermes/caos/agent_registry.py
-14 agents deployed with personas, capabilities, departments
-4 council members: marcus (CEO), diana (COO), felix (Finance), kahneman (Psychology)
-Memory stores initialized (SQLite FTS5)
-Strike tracking initialized
+Pre-Mortem → Decision Critic → Fiduciary Guard → Strategic Veto
+     │              │                │                  │
+  "What could    "Stress-test    "Can we afford    "Should we do
+   go wrong?"     the logic"      this?"            this?"
 ```
 
-### Phase 6 — V4 Graph Activation + MCP Wire
-```
-dist/toon/v4/auto-activate.js:
-  → Merge 3 graphs → unified.db (FTS5 search)
-  → Deploy MCP server → .toon/hermes/mcp-server.py
-  → Auto-wire to ~/.hermes/config.yaml (5 graph tools + permissions)
-```
+Board skills:
+- **Custom:** constitution-enforcement, fiduciary-guard, risk-assessment-matrix, strategic-veto
+- **Marketplace:** decision-critic, postmortem-writing, pre-mortem
+- **OS:** reflection-protocol, triple-pass-protocol
 
-### Phase 7 — Dashboard
+---
+
+## Pipeline
+
+`toongine-pipeline.py` (cron every 5 min):
+
+1. Reads Hermes `state.db` — sessions, tokens, costs, agent attribution
+2. Matches sessions to projects via working directory
+3. Writes per-project `metrics.json` (tokens, cost, hourly burn, per-agent, per-provider)
+4. Syncs agent memory health stats to `config.json`
+5. Pushes `.toon/` to GitHub for visibility
+
+Zero Supabase. Zero fake data.
+
+---
+
+## API Endpoints (VPS :4201)
+
+| Endpoint | Returns |
+|----------|---------|
+| `POST /register` | Create project — deploys 25 agents |
+| `GET /projects` | List all registered projects |
+| `GET /metrics?project=<name>` | Per-project token burn, cost, agents |
+| `GET /metrics/all` | Aggregate across all projects |
+| `GET /agents?project=<name>` | Agent memory health per project |
+| `GET /health` | Server status |
+
+---
+
+## Per-Project Structure
+
+After `npx toongine init`, the VPS creates:
+
 ```
-toongine dashboard → localhost:4200
-Real metrics from unified.db — not fake data.
+/root/.toon/projects/<name>/
+├── agents/              25 agents with MEMORY.md
+│   ├── CEO/marcus/
+│   ├── COO/diana/
+│   ├── Command/board/
+│   ├── Finance/felix/
+│   ├── Legal/{comply,docs,guard}/
+│   ├── Marketing/{kai,lena,rio,nate,atlas,pixel,aria}/
+│   ├── Psychology/Daniel_Kahneman/
+│   ├── Research/{depth,synth,vette}/
+│   ├── Sense/{forge,radar,scout}/
+│   └── Technical/{dev,raj,mia,quinn}/
+├── config.json          repo_id, version, agent memory health
+├── metrics.json         token burn, cost, sessions, hourly, per-agent
+├── graph/ codegraph/ graphify/ code-review-graph/
+├── hermes/              bridge config
+└── state/               runtime state
 ```
 
 ---
 
-## CAOS Pipeline — How Agents Execute Tasks
+## CAOS Pipelines (yvon-engine/.toon/hermes/caos/)
 
-```
-USER: "build auth system with login and signup"
-  │
-  ├─ MARCUS (AgenticCoordinator) plans
-  │   AgenticCoordinator.plan(task)
-  │   → Decomposes: DB schema → API → UI → tests → security audit
-  │   → Matches agents by fitness (category + success_rate - load - strikes)
-  │   → Extracts spec: features, edge cases, constraints, tests
-  │
-  ├─ DIANA schedules
-  │   Topological sort → parallel execution rounds
-  │   Speculative: start B before A finishes if A is reliable (>85%)
-  │
-  └─ FOR EACH TASK → AGENT EXECUTES
-      │
-      ├─ SESSION INJECTION
-      │   SQLite FTS5 search across all history
-      │   → Top 5 episodic memories
-      │   → Top 3 past mistakes
-      │   → Prevention rules from MistakeRulesEngine
-      │   → Graph context from unified.db
-      │   → Strike status + confidence multiplier
-      │   → TOON-compressed → ~29 tokens
-      │
-      ├─ AGENT GENERATES (via Hermes → DeepSeek)
-      │   CaosExecutor reads provider/model from ~/.hermes/config.yaml
-      │   Agent persona: "You are Raj, backend lead. Write clean APIs..."
-      │   Discipline rules: 10 rules (never hardcode secrets, parameterized SQL...)
-      │   Full context injection (memories + rules + graph + spec)
-      │   → Calls Hermes-configured model API
-      │
-      ├─ AGENT QUERIES GRAPH (MCP tools)
-      │   toon_graph_search("auth")          → finds auth.ts, login.ts
-      │   toon_graph_callers("hashPassword") → register.ts, login.ts
-      │   toon_graph_impact("UserSchema")    → 5 files affected
-      │
-      ├─ SELF-COUNTER
-      │   Agent attacks its own output
-      │   Finds flaws → revises → re-checks (max 3 retries)
-      │
-      ├─ CROSS-DEPT CHALLENGE
-      │   Other departments audit the output
-      │   File challenges for issues found
-      │
-      ├─ QUINN (CaosVerifier) — real execution
-      │   SYNTAX:   compile(code) or tsc --noEmit
-      │   LINT:     flake8 or eslint
-      │   TYPE:     mypy or tsc
-      │   TESTS:    pytest or jest
-      │   SECURITY: scan for secrets, SQL injection, eval()
-      │   → CRITICAL/ERROR = REJECTED
-      │
-      ├─ KAHNEMAN (ReasoningEngine) — real audit
-      │   10 fallacies detected (circular, false dichotomy...)
-      │   10 biases detected (confirmation, overconfidence...)
-      │   Evidence chains built (trace every claim)
-      │   Uncertainty quantified (confidence intervals)
-      │   → Fallacies/weak evidence = REJECTED
-      │
-      ├─ DISCIPLINE GATE (6 gates)
-      │   DATA:         has evidence from tools/graph?
-      │   LOGIC:        has reasoning chain?
-      │   VERIFY:       Quinn passed?
-      │   SELF-COUNTER: agent attacked own output?
-      │   CONFIDENCE:   above 0.75?
-      │   COUNCIL:      high-stakes approved?
-      │   → ANY gate fails = BLOCKED, agent: "I need more data"
-      │
-      ├─ COUNCIL (real LLM deliberation)
-      │   Marcus (DeepSeek): deliberates + votes
-      │   Diana, Kahneman, Felix: deterministic fallback
-      │   3/5 majority required for threaten/demote/suspend/override
-      │
-      ├─ BELIEF UPDATE (Bayesian)
-      │   P(H|E) = P(E|H)P(H)/P(E)
-      │   Confidence < 0.3 → 💀 KILL belief
-      │
-      └─ OUTPUT DELIVERED or RETRY
-          Passed → COMPLETED (SQLite memory updated)
-          Failed → retry/reassign (max 3x) → fallback agent
-
-AFTER TASK:
-  ├─ Memory updated (SQLite FTS5 — episodic, semantic, procedural, mistake)
-  ├─ Mistake → prevention rule (pattern extraction + generalization)
-  ├─ Agent capability updated (EMA on success_rate + avg_time)
-  └─ State vector updated
-```
+| Module | Purpose |
+|--------|---------|
+| `pipeline_router.py` | Classifies intent: NEW_PROJECT / NEW_FEATURE / NEW_IDEA |
+| `research_phase.py` | 6-agent research gate with 5-dimension scoring |
+| `agent_protocol.py` | 4 checkpoints (CP1-CP4) — every agent self-questions |
+| `caos_loop.py` | Marcus → Diana → Dev/Raj/Mia → Quinn → Council |
+| `caos_executor.py` | Executes agent tasks with discipline gates |
+| `caos_verifier.py` | Post-execution verification |
+| `discipline_gate.py` | 6 discipline gates before output ships |
+| `council.py` | Cross-agent deliberation and conflict resolution |
+| `self_counter.py` | Agent self-critique and correction loop |
+| `memory_store.py` | Persistent agent memory operations |
+| `agent_registry.py` | Agent manifest, capabilities, department map |
+| `project_registry.py` | Multi-project isolation and routing |
 
 ---
 
-## CLI Reference — All Commands
+## Commands
 
 ```bash
-# ── Setup ──────────────────────────────────────────────────
-npx toongine init              # Full install: graphs + agents + CAOS + MCP
-npx toongine doctor            # Health check — all systems operational
-npx toongine doctor --stale    # Check for stale graph outputs
-
-# ── Agents (CAOS Agent Registry) ───────────────────────────
-npx toongine agent list        # All agents with status/department/role
-npx toongine agent add <name>  # Add new agent (--dept --role --categories...)
-npx toongine agent remove <n>  # Archive agent (preserves memories)
-npx toongine agent edit <n>    # Edit capabilities (--success-rate 0.9...)
-npx toongine agent suspend <n> # Suspend from rotation
-npx toongine agent reinstate <n> # Reactivate
-
-# ── Graphs ─────────────────────────────────────────────────
-npx toongine compile           # Rebuild all TOON reports + unified.db
-npx toongine graph             # Rebuild per-tool graphs
-npx toongine clean             # Remove stale duplicates
-
-# ── Dashboard ──────────────────────────────────────────────
-npx toongine dashboard         # Start (port 4200) — real metrics
-
-# ── Hermes ─────────────────────────────────────────────────
-npx toongine hermes connect    # Auto-wire MCP into Hermes config
-
-# ── Info ───────────────────────────────────────────────────
-npx toongine version           # Show version
-npx toongine stats             # Compression stats
+npx toongine init              # Deploy agents + scaffold project
+npx toongine compile           # Build TOON compression corpus
+npx toongine graphify:build    # Build AST knowledge graph
+npx toongine codegraph:build   # Build import dependency graph
+npx toongine project list      # List registered projects
+npx toongine project switch    # Switch active project
+npx toongine dashboard         # Standalone dashboard (port 4200)
 ```
 
 ---
 
-## 5 MCP Graph Tools
+## Stack
 
-Auto-registered with Hermes on `init`. No manual config.
-
-| Tool | Purpose | Example |
-|------|---------|---------|
-| `toon_graph_search` | Full-text search all symbols | `toon_graph_search("auth flow")` |
-| `toon_graph_explore` | Natural language exploration | `toon_graph_explore("database connection")` |
-| `toon_graph_callers` | Find who calls a symbol | `toon_graph_callers("login")` |
-| `toon_graph_impact` | Blast radius analysis | `toon_graph_impact("UserSchema")` |
-| `toon_graph_status` | Graph health metrics | nodes, edges, staleness, coverage |
-
----
-
-## CAOS Engines (`.toon/hermes/caos/`)
-
-| Engine | File | Purpose |
-|--------|------|---------|
-| Pipeline | `pipeline.py` | 6-phase execution: plan→schedule→execute→verify→council→synthesize |
-| Executor | `caos_executor.py` | Agent → Hermes config → model API (DeepSeek/OpenRouter/etc.) |
-| Verifier | `caos_verifier.py` | Real verification: syntax→lint→type→test→security |
-| Coordinator | `agentic_coordinator.py` | Capability matrix + task decomposition + speculative scheduling |
-| Coding Engine | `coding_engine.py` | 12 anti-patterns + spec extraction + project rules |
-| Reasoning Engine | `reasoning_engine.py` | 10 fallacies + 10 biases + evidence chains + Bayesian update |
-| Mistake Rules | `mistake_rules.py` | Mistake→prevention rule + session injection + feedback loop |
-| Discipline Gate | `discipline_gate.py` | 6 gates: DATA/LOGIC/VERIFY/SELF-COUNTER/CONFIDENCE/COUNCIL |
-| Council | `council.py` | Real LLM deliberation + deterministic fallback |
-| Agent Registry | `agent_registry.py` | Single source of truth — add/remove/edit agents at runtime |
-| Memory System | `memory_system.py` | SQLite FTS5 — episodic, semantic, procedural, mistake, working |
-| Memory Store | `memory_store.py` | SQLite FTS5 database — BM25 search across all history |
-| Self-Counter | `self_counter.py` | Agent attacks own output before submission |
-| Challenge | `challenge_protocol.py` | Cross-department adversarial review |
-| Counter-User | `counter_user.py` | Agents VETO dangerous user requests |
-| Algorithms | `algorithms.py` | DSA: TaskDAG, BeliefPropagation, PriorityScheduling |
-| Algorithms v2 | `algorithms_v2.py` | Beam Search, MCTS, Speculative Exec, Fibonacci Heap, Bloom Filter |
-
----
-
-## 14 Agents — 8 Departments
-
-| Dept | Agents | Council |
-|------|--------|---------|
-| Executive | marcus (CEO), diana (COO) | ✅ marcus (2 votes), diana |
-| Technical | dev, rio | |
-| Backend | raj, nate | |
-| Frontend | mia | |
-| Testing | quinn | |
-| Design | kai, lena | |
-| Finance | felix | ✅ |
-| Psychology | kahneman | ✅ |
-| Research | vette, depth | |
-
-Add/remove/edit agents at runtime: `npx toongine agent add nova --dept frontend`
-
----
-
-## Memory Architecture
-
-```
-SQLite FTS5 database: .toon/memory/caos_memory.db
-
-5 Memory Types:
-  EPISODIC:   what happened (task logs)
-  SEMANTIC:   what I know (facts)
-  PROCEDURAL: how to do (patterns)
-  MISTAKE:    what NOT to do (errors → prevention rules)
-  WORKING:    right now (current task state)
-
-Search:  FTS5 full-text with BM25 ranking
-Query:   memory_store.search("auth login", agent="raj", memory_type="mistake")
-          → Returns mistakes about "auth login" in milliseconds
-          → Works across months of history
-
-Session injection: top 5 episodic + top 3 mistakes + top 3 procedures
-                 → TOON-compressed → ~29 tokens
-```
-
----
-
-## Install from GitHub
-
-```bash
-# Latest (v5)
-npm install -g github:OfficialNovizio/ToonGine#master
-
-# Windows: if github: protocol fails, clone + npm link
-git clone https://github.com/OfficialNovizio/ToonGine
-cd ToonGine && npm link
-```
-
----
-
-## Requirements
-
-- Node.js ≥ 18
-- Python ≥ 3.10
-- Git (for code-review-graph)
-- [Hermes Agent](https://hermes-agent.nousresearch.com) (for MCP tools + CAOS execution)
-- DEEPSEEK_API_KEY (for agent execution via Hermes)
-
----
-
-## Version History
-
-| Version | What |
-|---------|------|
-| v1.x | Initial TOON compression, basic graphs, agent deployment |
-| v4 | Unified graph, V4 bridge, MCP tools, 3-tool graph |
-| **v5** | **CAOS — 18 engines, real DeepSeek/Hermes execution, SQLite FTS5, council deliberation, discipline gate, mistake→rule pipeline, agent registry** |
-
----
-
-## License
-
-MIT — YVON OS
+- **Agent runtime:** Hermes Agent on VPS (DeepSeek v4)
+- **Compression:** TOON v4 — 84.5% token savings
+- **Dashboard:** Next.js 15 on Vercel
+- **Graphs:** code-review-graph (semantic), graphify (AST), codegraph (imports)
+- **Pipeline:** Python cron, zero Supabase dependency
